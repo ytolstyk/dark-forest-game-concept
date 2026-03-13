@@ -6,14 +6,14 @@ export const MAP_PIXEL_HEIGHT = MAP_HEIGHT * TILE_SIZE;
 
 export const PLAYER_SPEED = 3;
 export const ENEMY_PATROL_SPEED = 1;
-export const ENEMY_CHASE_SPEED = 2.5;
+export const ENEMY_CHASE_SPEED = 3.2;
 export const ENEMY_SEARCH_SPEED = 1.5;
 
-export const TORCH_RADIUS = 200;
-export const AMBIENT_LIGHT_RADIUS = 60;
+export const TORCH_RADIUS = 400;
+export const AMBIENT_LIGHT_RADIUS = 50;
 export const DARKNESS_ALPHA = 0.82;
 
-export const ENEMY_COUNT = 18;
+export const ENEMY_COUNT = 30;
 export const ENEMY_SEARCH_DURATION = 180; // frames (~3 seconds at 60fps)
 export const MAX_HEAR_DISTANCE = 400;
 

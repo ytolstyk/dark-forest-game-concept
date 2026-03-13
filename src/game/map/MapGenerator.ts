@@ -22,19 +22,23 @@ export function generateMap(): MapData {
   for (let y = 0; y < MAP_HEIGHT; y++) {
     tiles[y] = [];
     for (let x = 0; x < MAP_WIDTH; x++) {
+      // Low-frequency elevation drives water/land split only
       const elevation = octaveNoise(x, y, 4, 0.5, 2, 0.02);
-      const moisture = octaveNoise(x + 1000, y + 1000, 3, 0.5, 2, 0.03);
-      const detail = noise2D(x * 0.1, y * 0.1);
+      const detail    = noise2D(x * 0.1, y * 0.1);
+      // High-frequency noise creates small isolated tree clumps (~8-12 tiles wide)
+      const treeNoise = octaveNoise(x + 500, y + 500, 3, 0.5, 2, 0.10);
 
-      if (elevation < -0.3) {
+      if (elevation < -0.48) {
         tiles[y][x] = TileType.DEEP_WATER;
-      } else if (elevation < -0.15) {
+      } else if (elevation < -0.34) {
         tiles[y][x] = TileType.SHALLOW_WATER;
-      } else if (elevation > 0.4 && moisture > 0.1) {
+      } else if (elevation > -0.1 && treeNoise > 0.40) {
+        // Dense clump cores — only on dry land
         tiles[y][x] = TileType.DENSE_TREE;
-      } else if (elevation > 0.2 && moisture > -0.1) {
+      } else if (elevation > -0.15 && treeNoise > 0.20) {
+        // Tree clump edges
         tiles[y][x] = TileType.TREE;
-      } else if (detail > 0.4 && elevation > -0.1) {
+      } else if (detail > 0.4 && elevation > -0.2) {
         tiles[y][x] = TileType.TALL_GRASS;
       } else {
         tiles[y][x] = TileType.GRASS;
@@ -65,9 +69,24 @@ export function generateMap(): MapData {
     Math.floor(playerSpawn.y / TILE_SIZE),
   );
 
-  const carPosition = findWalkablePosition(tiles, MAP_WIDTH - 40, MAP_WIDTH - 15, MAP_HEIGHT - 40, MAP_HEIGHT - 15);
-  const keysPosition = findWalkablePosition(tiles, MAP_WIDTH / 2 - 30, MAP_WIDTH / 2 + 30, 20, MAP_HEIGHT / 2);
-  const fuelPosition = findWalkablePosition(tiles, 20, MAP_WIDTH / 2, MAP_HEIGHT / 2, MAP_HEIGHT - 20);
+  // Divide the map into quadrants and pick one item per quadrant, avoiding
+  // the player-spawn quadrant so items are spread across the map.
+  const mid = MAP_WIDTH / 2; // map is square
+  const margin = 15;
+  const quadrants: [number, number, number, number][] = [
+    [margin,   mid,     margin,   mid],      // top-left
+    [mid,      MAP_WIDTH - margin, margin,   mid],      // top-right
+    [margin,   mid,     mid,      MAP_HEIGHT - margin], // bottom-left
+    [mid,      MAP_WIDTH - margin, mid,      MAP_HEIGHT - margin], // bottom-right
+  ];
+  // Shuffle quadrants so assignment varies each game
+  for (let i = quadrants.length - 1; i > 0; i--) {
+    const j = randomInt(0, i);
+    [quadrants[i], quadrants[j]] = [quadrants[j], quadrants[i]];
+  }
+  const carPosition   = findWalkablePosition(tiles, ...quadrants[0]);
+  const keysPosition  = findWalkablePosition(tiles, ...quadrants[1]);
+  const fuelPosition  = findWalkablePosition(tiles, ...quadrants[2]);
 
   // Generate enemy spawns away from the player
   const enemySpawns: Vector2[] = [];
@@ -255,15 +274,15 @@ function ensureConnectivity(
 // ---------------------------------------------------------------------------
 
 function carveRivers(tiles: TileType[][], noise2D: (x: number, y: number) => number) {
-  // Carve 2-3 winding rivers
-  const riverCount = randomInt(2, 3);
+  // Carve 1-2 winding rivers (narrower than before)
+  const riverCount = randomInt(1, 2);
   for (let r = 0; r < riverCount; r++) {
     let x = r === 0 ? randomInt(30, 60) : randomInt(MAP_WIDTH / 3, (MAP_WIDTH * 2) / 3);
     let y = 0;
     const xDrift = noise2D(r * 100, 0);
 
     while (y < MAP_HEIGHT) {
-      const width = randomInt(2, 4);
+      const width = randomInt(1, 3);
       for (let dx = -width; dx <= width; dx++) {
         const tx = Math.round(x + dx);
         if (tx >= 0 && tx < MAP_WIDTH) {
@@ -345,20 +364,129 @@ function placeBuildings(tiles: TileType[][]) {
 }
 
 function placeBridges(tiles: TileType[][]) {
-  // Scan for path tiles near water and place bridges
-  for (let y = 1; y < MAP_HEIGHT - 1; y++) {
-    for (let x = 1; x < MAP_WIDTH - 1; x++) {
-      if (tiles[y][x] === TileType.DEEP_WATER || tiles[y][x] === TileType.SHALLOW_WATER) {
-        const hasPathNearby =
-          (x > 1 && tiles[y][x - 2] === TileType.DIRT_PATH) ||
-          (x < MAP_WIDTH - 2 && tiles[y][x + 2] === TileType.DIRT_PATH) ||
-          (y > 1 && tiles[y - 2][x] === TileType.DIRT_PATH) ||
-          (y < MAP_HEIGHT - 2 && tiles[y + 2][x] === TileType.DIRT_PATH);
+  const MAX_SPAN   = 8;
+  const EXCL_ZONE  = 6; // tile buffer around every placed bridge — prevents intersections
 
-        if (hasPathNearby && Math.random() < 0.08) {
-          tiles[y][x] = TileType.BRIDGE;
+  const isWater = (t: TileType) => t === TileType.DEEP_WATER || t === TileType.SHALLOW_WATER;
+  const isLand  = (t: TileType) => !isWater(t) && t !== TileType.BUILDING_WALL;
+
+  interface Candidate {
+    span: [number, number][]; // ordered tile coords for the straight-line span
+    hasPath: boolean;
+  }
+
+  // ── collect every valid crossing ────────────────────────────────────────────
+  const candidates: Candidate[] = [];
+
+  const BLOCKING = new Set<TileType>([TileType.TREE, TileType.DENSE_TREE, TileType.BUILDING_WALL]);
+
+  // Returns true if any tile adjacent (4-way) to any span tile is a movement blocker.
+  const spanAdjacentToBlocker = (span: [number, number][]): boolean =>
+    span.some(([bx, by]) =>
+      ([[1,0],[-1,0],[0,1],[0,-1]] as [number,number][]).some(([dx, dy]) => {
+        const nx = bx + dx, ny = by + dy;
+        return nx >= 0 && nx < MAP_WIDTH && ny >= 0 && ny < MAP_HEIGHT &&
+          BLOCKING.has(tiles[ny][nx]);
+      })
+    );
+
+  // Returns true if every tile in the span has a non-water neighbour
+  // perpendicular to the bridge direction — meaning it's already touching ground
+  // on all sides and doesn't need a bridge.
+  const spanTouchesGroundEverywhere = (
+    span: [number, number][],
+    perpDirs: [number, number][],
+  ): boolean =>
+    span.every(([bx, by]) =>
+      perpDirs.some(([dx, dy]) => {
+        const nx = bx + dx, ny = by + dy;
+        return nx >= 0 && nx < MAP_WIDTH && ny >= 0 && ny < MAP_HEIGHT &&
+          !isWater(tiles[ny][nx]);
+      })
+    );
+
+  // Horizontal: land | water...water | land  (same row)
+  for (let y = 1; y < MAP_HEIGHT - 1; y++) {
+    let x = 1;
+    while (x < MAP_WIDTH - 1) {
+      if (isWater(tiles[y][x]) && isLand(tiles[y][x - 1])) {
+        let end = x;
+        while (end < MAP_WIDTH && isWater(tiles[y][end])) end++;
+        if (end < MAP_WIDTH && isLand(tiles[y][end]) && end - x <= MAX_SPAN) {
+          const span: [number, number][] = [];
+          for (let bx = x; bx < end; bx++) span.push([bx, y]);
+          // Skip if every span tile already touches ground above or below,
+          // or if any span tile is adjacent to a blocking tile (tree / wall).
+          if (!spanTouchesGroundEverywhere(span, [[0, -1], [0, 1]]) &&
+              !spanAdjacentToBlocker(span)) {
+            const hasPath =
+              tiles[y][x - 1] === TileType.DIRT_PATH ||
+              tiles[y][end]   === TileType.DIRT_PATH;
+            candidates.push({ span, hasPath });
+          }
         }
+        x = end + 1;
+      } else {
+        x++;
       }
+    }
+  }
+
+  // Vertical: land / water...water / land  (same column)
+  for (let x = 1; x < MAP_WIDTH - 1; x++) {
+    let y = 1;
+    while (y < MAP_HEIGHT - 1) {
+      if (isWater(tiles[y][x]) && isLand(tiles[y - 1][x])) {
+        let end = y;
+        while (end < MAP_HEIGHT && isWater(tiles[end][x])) end++;
+        if (end < MAP_HEIGHT && isLand(tiles[end][x]) && end - y <= MAX_SPAN) {
+          const span: [number, number][] = [];
+          for (let by = y; by < end; by++) span.push([x, by]);
+          // Skip if every span tile already touches ground to the left or right,
+          // or if any span tile is adjacent to a blocking tile (tree / wall).
+          if (!spanTouchesGroundEverywhere(span, [[-1, 0], [1, 0]]) &&
+              !spanAdjacentToBlocker(span)) {
+            const hasPath =
+              tiles[y - 1][x] === TileType.DIRT_PATH ||
+              tiles[end][x]   === TileType.DIRT_PATH;
+            candidates.push({ span, hasPath });
+          }
+        }
+        y = end + 1;
+      } else {
+        y++;
+      }
+    }
+  }
+
+  // Prioritise path-adjacent crossings so dirt paths always cross rivers
+  candidates.sort((a, b) => (b.hasPath ? 1 : 0) - (a.hasPath ? 1 : 0));
+
+  // ── place bridges with an exclusion zone ────────────────────────────────────
+  // Any tile within EXCL_ZONE of a placed bridge blocks future bridges,
+  // which prevents both parallel near-duplicates and perpendicular intersections.
+  const blocked = new Set<number>();
+
+  const markZone = (bx: number, by: number) => {
+    for (let dy = -EXCL_ZONE; dy <= EXCL_ZONE; dy++) {
+      for (let dx = -EXCL_ZONE; dx <= EXCL_ZONE; dx++) {
+        const nx = bx + dx, ny = by + dy;
+        if (nx >= 0 && nx < MAP_WIDTH && ny >= 0 && ny < MAP_HEIGHT)
+          blocked.add(ny * MAP_WIDTH + nx);
+      }
+    }
+  };
+
+  for (const { span, hasPath } of candidates) {
+    // Skip if any tile in this span is already in an exclusion zone
+    if (span.some(([bx, by]) => blocked.has(by * MAP_WIDTH + bx))) continue;
+
+    // Random filter — path crossings are almost always placed
+    if (Math.random() > (hasPath ? 0.85 : 0.35)) continue;
+
+    for (const [bx, by] of span) {
+      tiles[by][bx] = TileType.BRIDGE;
+      markZone(bx, by);
     }
   }
 }

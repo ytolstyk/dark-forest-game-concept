@@ -18,7 +18,7 @@ export class Enemy {
   private leftEye: Graphics;
   private rightEye: Graphics;
 
-  constructor(x: number, y: number) {
+  constructor(x: number, y: number, scale = 1) {
     this.position = { x, y };
     this.patrolOrigin = { x, y };
     this.container = new Container();
@@ -33,6 +33,8 @@ export class Enemy {
     this.container.addChild(this.body);
     this.container.addChild(this.leftEye);
     this.container.addChild(this.rightEye);
+
+    this.container.scale.set(scale);
   }
 
   private drawBody() {

@@ -1,5 +1,5 @@
 import { Application, Container } from 'pixi.js';
-import { GameState, EnemyState, CollectibleType } from '../types';
+import { GameState, EnemyState, CollectibleType, TileType } from '../types';
 import { MAX_HEAR_DISTANCE } from '../constants';
 import { distance } from '../utils/math';
 import { generateMap } from '../map/MapGenerator';
@@ -24,6 +24,7 @@ export class GameScene {
   private entityContainer: Container;
 
   private tileMap: TileMap;
+  private tiles: TileType[][] = [];
   private player!: Player;
   private enemies: Enemy[] = [];
   private collectibles: Collectible[] = [];
@@ -69,6 +70,7 @@ export class GameScene {
     await new Promise<void>((r) => setTimeout(r, 50));
 
     const mapData = generateMap();
+    this.tiles = mapData.tiles;
 
     // Set tiles for systems
     this.collision.setTiles(mapData.tiles);
@@ -83,7 +85,8 @@ export class GameScene {
     // Create enemies
     this.enemies = [];
     for (const spawn of mapData.enemySpawns) {
-      this.enemies.push(new Enemy(spawn.x, spawn.y));
+      const enemyScale = 1 + Math.random(); // 1.0 – 2.0
+      this.enemies.push(new Enemy(spawn.x, spawn.y, enemyScale));
     }
 
     // Create collectibles
@@ -236,6 +239,7 @@ export class GameScene {
       this.camera.y,
       screenW,
       screenH,
+      this.tiles,
       enemyGlows,
       itemGlows
     );
