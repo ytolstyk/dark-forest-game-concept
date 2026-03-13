@@ -1,73 +1,48 @@
-# React + TypeScript + Vite
+# Dark Forest
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A top-down survival game built with React 19, TypeScript, Vite, and Pixi.js v8.
 
-Currently, two official plugins are available:
+You wake up in a dark forest. Find the **keys** and **fuel**, then reach the **car** to escape — before the creatures find you.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## How to Play
 
-## React Compiler
+| Input | Action |
+|---|---|
+| `WASD` / Arrow Keys | Move |
+| `Space` | Toggle torch |
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Your torch reveals a wide area but **attracts enemies** — use it wisely
+- Without the torch you have only a faint ambient glow
+- Enemies patrol the forest; if they spot or hear you they give chase
+- Collect the **keys** and **fuel** (shown in the HUD), then walk to the **car**
 
-## Expanding the ESLint configuration
+## Running Locally
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev        # http://localhost:5173
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run build      # type-check + production bundle → dist/
+npm run preview    # serve dist/ locally
+npm run lint       # ESLint
 ```
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| UI / shell | React 19, TypeScript |
+| Renderer | Pixi.js v8 (WebGL) |
+| Bundler | Vite 8 + Rolldown |
+| Noise | simplex-noise v4 |
+
+## Features
+
+- **Procedural map** — simplex-noise terrain with rivers, forests, dirt paths, and abandoned buildings generated fresh every run
+- **Guaranteed connectivity** — flood-fill post-pass bridges any isolated land section so every building and item is always reachable
+- **Lighting system** — Canvas 2D radial-gradient darkness overlay with a soft torch halo; torch radius vs ambient radius controlled in `constants.ts`
+- **Enemy AI** — patrol → chase → search → return state machine with A\* pathfinding
+- **Particle effects** — torch sparks, ambient dust
+- **Audio** — footsteps, torch crackle, enemy growl, chase music, pickup sounds
