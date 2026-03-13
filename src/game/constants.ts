@@ -13,7 +13,7 @@ export const TORCH_RADIUS = 400;
 export const AMBIENT_LIGHT_RADIUS = 50;
 export const DARKNESS_ALPHA = 0.82;
 
-export const ENEMY_COUNT = 30;
+export const ENEMY_COUNT = 60;
 export const ENEMY_SEARCH_DURATION = 180; // frames (~3 seconds at 60fps)
 export const MAX_HEAR_DISTANCE = 400;
 
