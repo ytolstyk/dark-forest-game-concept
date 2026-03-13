@@ -1,0 +1,225 @@
+.game-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.overlay > * {
+  pointer-events: auto;
+}
+
+/* Loading */
+.loading-overlay {
+  background: rgba(0, 0, 0, 0.95);
+}
+
+.loading-title {
+  font-size: 28px;
+  color: #88aa88;
+  margin-bottom: 32px;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 4px;
+}
+
+.progress-bar-track {
+  width: 320px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: #44ff44;
+  border-radius: 3px;
+  transition: width 0.1s linear;
+  box-shadow: 0 0 8px rgba(68, 255, 68, 0.6);
+}
+
+.loading-pct {
+  margin-top: 12px;
+  color: #446644;
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+}
+
+/* Menu */
+.menu-overlay {
+  background: radial-gradient(ellipse at center, rgba(0, 20, 0, 0.85) 0%, rgba(0, 0, 0, 0.95) 100%);
+}
+
+.menu-title {
+  font-size: 72px;
+  font-weight: bold;
+  color: #aaffaa;
+  text-shadow: 0 0 20px #00ff00, 0 0 40px #008800, 0 0 80px #004400;
+  margin-bottom: 40px;
+  letter-spacing: 8px;
+  text-transform: uppercase;
+  font-family: 'Courier New', monospace;
+}
+
+.menu-instructions {
+  color: #88aa88;
+  font-size: 16px;
+  margin-bottom: 40px;
+  text-align: center;
+  line-height: 1.8;
+}
+
+.menu-instructions kbd {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-family: 'Courier New', monospace;
+  color: #ccddcc;
+}
+
+.btn {
+  padding: 16px 48px;
+  font-size: 20px;
+  font-family: 'Courier New', monospace;
+  border: 2px solid #44ff44;
+  background: transparent;
+  color: #44ff44;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  transition: all 0.3s;
+}
+
+.btn:hover {
+  background: rgba(68, 255, 68, 0.15);
+  box-shadow: 0 0 20px rgba(68, 255, 68, 0.3);
+}
+
+/* HUD */
+.hud {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 16px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.hud-slot {
+  width: 64px;
+  height: 64px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 10px;
+  font-family: 'Courier New', monospace;
+  text-transform: uppercase;
+}
+
+.hud-slot.collected {
+  border-color: #44ff44;
+  color: #44ff44;
+  background: rgba(68, 255, 68, 0.1);
+}
+
+.hud-slot .icon {
+  font-size: 24px;
+  margin-bottom: 2px;
+}
+
+.torch-indicator {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 5;
+  padding: 8px 16px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.torch-indicator.on {
+  color: #ffaa33;
+  background: rgba(255, 170, 51, 0.15);
+  border: 1px solid rgba(255, 170, 51, 0.3);
+}
+
+.torch-indicator.off {
+  color: #666;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Game Over */
+.gameover-overlay {
+  background: rgba(80, 0, 0, 0.85);
+}
+
+.gameover-title {
+  font-size: 56px;
+  font-weight: bold;
+  color: #ff4444;
+  text-shadow: 0 0 20px #ff0000, 0 0 40px #880000;
+  margin-bottom: 30px;
+  font-family: 'Courier New', monospace;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+}
+
+.gameover-overlay .btn {
+  border-color: #ff4444;
+  color: #ff4444;
+}
+
+.gameover-overlay .btn:hover {
+  background: rgba(255, 68, 68, 0.15);
+  box-shadow: 0 0 20px rgba(255, 68, 68, 0.3);
+}
+
+/* Win */
+.win-overlay {
+  background: rgba(0, 60, 0, 0.85);
+}
+
+.win-title {
+  font-size: 48px;
+  font-weight: bold;
+  color: #44ff44;
+  text-shadow: 0 0 20px #00ff00, 0 0 40px #008800;
+  margin-bottom: 30px;
+  font-family: 'Courier New', monospace;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+}
+
+.win-overlay .btn {
+  border-color: #44ff44;
+  color: #44ff44;
+}
+
+.win-overlay .btn:hover {
+  background: rgba(68, 255, 68, 0.15);
+  box-shadow: 0 0 20px rgba(68, 255, 68, 0.3);
+}

@@ -1,0 +1,128 @@
+import { useRef, useEffect, useState, useCallback } from 'react'
+import { Game } from './game/Game'
+import { GameState } from './game/types'
+import './App.css'
+
+function App() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const gameRef = useRef<Game | null>(null)
+  const [gameState, setGameState] = useState<GameState>(GameState.MENU)
+  const [loadProgress, setLoadProgress] = useState(0)
+  const [torchOn, setTorchOn] = useState(false)
+  const [inventory, setInventory] = useState({ keys: false, fuel: false })
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const game = new Game()
+    gameRef.current = game
+
+    game.init(canvas).then(() => {
+      game.onStateChange((state: string) => {
+        setGameState(state as GameState)
+      })
+    })
+
+    return () => {
+      game.destroy()
+      gameRef.current = null
+    }
+  }, [])
+
+  // Poll game state for HUD (lightweight)
+  useEffect(() => {
+    if (gameState !== GameState.PLAYING) return
+    const interval = setInterval(() => {
+      const scene = gameRef.current?.scene
+      if (scene) {
+        setTorchOn(scene.torchOn)
+        setInventory({ ...scene.inventory })
+      }
+    }, 100)
+    return () => clearInterval(interval)
+  }, [gameState])
+
+  const startGame = useCallback(async () => {
+    const game = gameRef.current
+    if (!game) return
+    setLoadProgress(0)
+    setGameState(GameState.LOADING)
+
+    await game.startGame((pct) => setLoadProgress(pct))
+
+    setGameState(GameState.PLAYING)
+    setTorchOn(false)
+    setInventory({ keys: false, fuel: false })
+  }, [])
+
+  return (
+    <div className="game-container">
+      <canvas ref={canvasRef} />
+
+      {gameState === GameState.MENU && (
+        <div className="overlay menu-overlay">
+          <h1 className="menu-title">Dark Forest</h1>
+          <div className="menu-instructions">
+            <p><kbd>WASD</kbd> or <kbd>Arrow Keys</kbd> to move</p>
+            <p><kbd>Space</kbd> to toggle torch</p>
+            <p>Find the <strong>keys</strong> and <strong>fuel</strong>, then reach the <strong>car</strong> to escape</p>
+            <p>Your torch attracts creatures — use it wisely</p>
+          </div>
+          <button className="btn" onClick={startGame}>Start Game</button>
+        </div>
+      )}
+
+      {gameState === GameState.LOADING && (
+        <div className="overlay loading-overlay">
+          <h2 className="loading-title">Generating Forest...</h2>
+          <div className="progress-bar-track">
+            <div
+              className="progress-bar-fill"
+              style={{ width: `${Math.round(loadProgress * 100)}%` }}
+            />
+          </div>
+          <p className="loading-pct">{Math.round(loadProgress * 100)}%</p>
+        </div>
+      )}
+
+      {gameState === GameState.PLAYING && (
+        <>
+          <div className={`torch-indicator ${torchOn ? 'on' : 'off'}`}>
+            {torchOn ? 'TORCH ON' : 'TORCH OFF'}
+          </div>
+          <div className="hud">
+            <div className={`hud-slot ${inventory.keys ? 'collected' : ''}`}>
+              <span className="icon">🔑</span>
+              <span>Keys</span>
+            </div>
+            <div className={`hud-slot ${inventory.fuel ? 'collected' : ''}`}>
+              <span className="icon">⛽</span>
+              <span>Fuel</span>
+            </div>
+            <div className="hud-slot">
+              <span className="icon">🚗</span>
+              <span>Car</span>
+            </div>
+          </div>
+        </>
+      )}
+
+      {gameState === GameState.GAME_OVER && (
+        <div className="overlay gameover-overlay">
+          <h1 className="gameover-title">You Were Caught</h1>
+          <button className="btn" onClick={startGame}>Try Again</button>
+        </div>
+      )}
+
+      {gameState === GameState.WIN && (
+        <div className="overlay win-overlay">
+          <h1 className="win-title">You Escaped the Forest</h1>
+          <button className="btn" onClick={startGame}>Play Again</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default App

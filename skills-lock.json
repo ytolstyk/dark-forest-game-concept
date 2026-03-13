@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "pixi-js": {
+      "source": "mindrally/skills",
+      "sourceType": "github",
+      "computedHash": "0af428d78813d1abe0864539b9dab68a190f16b7f0d96568b9e42367c3c52bb1"
+    }
+  }
+}
