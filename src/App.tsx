@@ -3,6 +3,12 @@ import { Game } from './game/Game'
 import { GameState } from './game/types'
 import './App.css'
 
+function formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const gameRef = useRef<Game | null>(null)
@@ -10,6 +16,8 @@ function App() {
   const [loadProgress, setLoadProgress] = useState(0)
   const [torchOn, setTorchOn] = useState(false)
   const [inventory, setInventory] = useState({ keys: false, fuel: false })
+  const [elapsed, setElapsed] = useState(0)
+  const startTimeRef = useRef<number>(0)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -40,6 +48,17 @@ function App() {
         setInventory({ ...scene.inventory })
       }
     }, 100)
+    return () => clearInterval(interval)
+  }, [gameState])
+
+  // Timer — runs while playing
+  useEffect(() => {
+    if (gameState !== GameState.PLAYING) return
+    startTimeRef.current = Date.now()
+    setElapsed(0)
+    const interval = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000))
+    }, 1000)
     return () => clearInterval(interval)
   }, [gameState])
 
@@ -88,6 +107,7 @@ function App() {
 
       {gameState === GameState.PLAYING && (
         <>
+          <div className="game-timer">{formatTime(elapsed)}</div>
           <div className={`torch-indicator ${torchOn ? 'on' : 'off'}`}>
             {torchOn ? 'TORCH ON' : 'TORCH OFF'}
           </div>
@@ -111,6 +131,7 @@ function App() {
       {gameState === GameState.GAME_OVER && (
         <div className="overlay gameover-overlay">
           <h1 className="gameover-title">You Were Caught</h1>
+          <p className="end-time">Survived for {formatTime(elapsed)}</p>
           <button className="btn" onClick={startGame}>Try Again</button>
         </div>
       )}
@@ -118,6 +139,7 @@ function App() {
       {gameState === GameState.WIN && (
         <div className="overlay win-overlay">
           <h1 className="win-title">You Escaped the Forest</h1>
+          <p className="end-time">Escaped in {formatTime(elapsed)}</p>
           <button className="btn" onClick={startGame}>Play Again</button>
         </div>
       )}
