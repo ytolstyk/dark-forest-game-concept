@@ -11,6 +11,7 @@ export const LURKER_CHASE_SPEED = PLAYER_SPEED * 0.5; // 2.1 px/frame
 export const ENEMY_SEARCH_SPEED = 1.5;
 export const LESHEN_SPEED = PLAYER_SPEED / 3; // 1.5 px/frame — always slower than the player
 export const LESHEN_PATH_INTERVAL = 45; // frames between A* recalculations
+export const LESHEN_PATROL_RADIUS = MAP_WIDTH * TILE_SIZE * 0.4; // ~2560px — roams a large portion of the map
 
 export const TORCH_RADIUS = 400;
 export const LURKER_HEAR_RADIUS = TORCH_RADIUS / 2; // 200px — lurker detects player by sound

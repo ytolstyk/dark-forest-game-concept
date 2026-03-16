@@ -10,6 +10,7 @@ import {
   ENEMY_SEARCH_DURATION,
   LESHEN_SPEED,
   LESHEN_PATH_INTERVAL,
+  LESHEN_PATROL_RADIUS,
   TILE_SIZE,
   MAP_WIDTH,
   MAP_HEIGHT,
@@ -121,8 +122,8 @@ export class EnemyAISystem {
     }
 
     if (!enemy.hasDetectedPlayer) {
-      // Still patrolling — normal wander behaviour
-      this.patrol(enemy);
+      // Still patrolling — roam a large area of the map
+      this.wanderAround(enemy, enemy.patrolOrigin, LESHEN_PATROL_RADIUS, ENEMY_PATROL_SPEED);
       return;
     }
 
