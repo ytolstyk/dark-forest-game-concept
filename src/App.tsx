@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
+import type React from 'react'
 import { Game } from './game/Game'
 import { GameState } from './game/types'
 import './App.css'
@@ -64,6 +65,54 @@ function App() {
     return () => clearInterval(interval)
   }, [gameState])
 
+  const joystickPadRef = useRef<HTMLDivElement>(null)
+  const joystickKnobRef = useRef<HTMLDivElement>(null)
+  const activeTouchId = useRef<number | null>(null)
+
+  const handleJoystickStart = useCallback((e: React.TouchEvent) => {
+    if (activeTouchId.current !== null) return
+    activeTouchId.current = e.changedTouches[0].identifier
+  }, [])
+
+  const handleJoystickMove = useCallback((e: React.TouchEvent) => {
+    const pad = joystickPadRef.current
+    const knob = joystickKnobRef.current
+    if (!pad || !knob || activeTouchId.current === null) return
+    let touch: React.Touch | null = null
+    for (let i = 0; i < e.touches.length; i++) {
+      if (e.touches[i].identifier === activeTouchId.current) { touch = e.touches[i]; break }
+    }
+    if (!touch) return
+    const rect = pad.getBoundingClientRect()
+    const cx = rect.left + rect.width / 2
+    const cy = rect.top + rect.height / 2
+    const dx = touch.clientX - cx
+    const dy = touch.clientY - cy
+    const dist = Math.sqrt(dx * dx + dy * dy)
+    const maxDist = rect.width / 2 - 8
+    const clamped = Math.min(dist, maxDist)
+    const nx = dist > 0 ? dx / dist : 0
+    const ny = dist > 0 ? dy / dist : 0
+    knob.style.transform = `translate(calc(-50% + ${nx * clamped}px), calc(-50% + ${ny * clamped}px))`
+    gameRef.current?.scene?.input.setVirtualMove(nx * (clamped / maxDist), ny * (clamped / maxDist))
+  }, [gameRef])
+
+  const handleJoystickEnd = useCallback((e: React.TouchEvent) => {
+    let found = false
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === activeTouchId.current) { found = true; break }
+    }
+    if (!found) return
+    activeTouchId.current = null
+    if (joystickKnobRef.current) joystickKnobRef.current.style.transform = 'translate(-50%, -50%)'
+    gameRef.current?.scene?.input.setVirtualMove(0, 0)
+  }, [gameRef])
+
+  const handleTorchTap = useCallback((e: React.TouchEvent) => {
+    e.stopPropagation()
+    gameRef.current?.scene?.input.triggerVirtualPress('Space')
+  }, [gameRef])
+
   const startGame = useCallback(async () => {
     const game = gameRef.current
     if (!game) return
@@ -110,6 +159,22 @@ function App() {
 
       {gameState === GameState.PLAYING && (
         <>
+          <div className="mobile-controls">
+            <div
+              ref={joystickPadRef}
+              className="joystick-pad"
+              onTouchStart={handleJoystickStart}
+              onTouchMove={handleJoystickMove}
+              onTouchEnd={handleJoystickEnd}
+              onTouchCancel={handleJoystickEnd}
+            >
+              <div ref={joystickKnobRef} className="joystick-knob" />
+            </div>
+            <div
+              className="mobile-torch-btn"
+              onTouchStart={handleTorchTap}
+            >🔦</div>
+          </div>
           <div className="game-timer">{formatTime(elapsed)}</div>
           <div className="step-counter">👣 {totalSteps}</div>
           <div className={`torch-indicator ${torchOn ? 'on' : 'off'}`}>

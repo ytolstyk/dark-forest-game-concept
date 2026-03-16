@@ -29,7 +29,7 @@ export class GameScene {
   private enemies: Enemy[] = [];
   private collectibles: Collectible[] = [];
 
-  private input: InputSystem;
+  input: InputSystem;
   private camera: CameraSystem;
   private collision: CollisionSystem;
   private lighting: LightingSystem;
@@ -142,6 +142,7 @@ export class GameScene {
 
     const screenW = this.app.screen.width;
     const screenH = this.app.screen.height;
+    const zoom = Math.min(screenW, screenH) < 600 ? 0.6 : screenW < 900 ? 0.75 : 1.0;
 
     // 1. Input
     this.input.update();
@@ -240,11 +241,11 @@ export class GameScene {
 
 
     // 9. Camera
-    this.camera.update(this.player.position, screenW, screenH);
-    this.camera.apply(this.worldContainer);
+    this.camera.update(this.player.position, screenW, screenH, zoom);
+    this.camera.apply(this.worldContainer, zoom);
 
     // 10. Particles
-    this.particles.update(this.player.position, this.player.torchOn, this.camera.x, this.camera.y);
+    this.particles.update(this.player.position, this.player.torchOn, this.camera.x, this.camera.y, zoom);
 
     // 11. Lighting
     const enemyGlows: { position: { x: number; y: number }; color: number; radius: number; alpha: number }[] = [];
@@ -297,7 +298,8 @@ export class GameScene {
       screenH,
       this.tiles,
       enemyGlows,
-      itemGlows
+      itemGlows,
+      zoom,
     );
 
     // 12. Audio

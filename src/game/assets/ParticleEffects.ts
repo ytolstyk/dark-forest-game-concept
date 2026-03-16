@@ -39,7 +39,7 @@ export class ParticleEffects {
     }
   }
 
-  update(playerPos: Vector2, torchOn: boolean, cameraX: number, cameraY: number) {
+  update(playerPos: Vector2, torchOn: boolean, cameraX: number, cameraY: number, zoom = 1) {
     this.time++;
     this.graphics.clear();
 
@@ -70,8 +70,8 @@ export class ParticleEffects {
         continue;
       }
       const alpha = p.life / p.maxLife;
-      const sx = p.x + cameraX;
-      const sy = p.y + cameraY;
+      const sx = p.x * zoom + cameraX;
+      const sy = p.y * zoom + cameraY;
       this.graphics.circle(sx, sy, p.size * alpha);
       this.graphics.fill({ color: p.color, alpha: alpha * 0.7 });
     }
@@ -82,8 +82,8 @@ export class ParticleEffects {
       p.y += p.vy + Math.cos(this.time * 0.015 + p.life) * 0.2;
       const alpha = (Math.sin(this.time * 0.03 + p.life * 0.1) + 1) * 0.25;
 
-      const sx = p.x + cameraX;
-      const sy = p.y + cameraY;
+      const sx = p.x * zoom + cameraX;
+      const sy = p.y * zoom + cameraY;
 
       if (sx > -20 && sx < window.innerWidth + 20 && sy > -20 && sy < window.innerHeight + 20) {
         this.graphics.circle(sx, sy, p.size);

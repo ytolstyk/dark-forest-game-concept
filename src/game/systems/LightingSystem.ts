@@ -55,7 +55,8 @@ export class LightingSystem {
     screenHeight: number,
     tiles: TileType[][],
     enemyGlows: GlowSource[],
-    itemGlows: GlowSource[]
+    itemGlows: GlowSource[],
+    zoom = 1,
   ) {
     const w = Math.ceil(screenWidth);
     const h = Math.ceil(screenHeight);
@@ -69,8 +70,8 @@ export class LightingSystem {
       this.canvas.height = h;
     }
 
-    const screenX = playerPos.x + cameraX;
-    const screenY = playerPos.y + cameraY;
+    const screenX = playerPos.x * zoom + cameraX;
+    const screenY = playerPos.y * zoom + cameraY;
 
     // 1. Fill the entire canvas with opaque black — complete darkness by default
     this.ctx.clearRect(0, 0, w, h);
@@ -81,13 +82,13 @@ export class LightingSystem {
     this.ctx.globalCompositeOperation = 'destination-out';
 
     // 2. Ambient sight — always visible tiny circle so the player isn't completely blind
-    const ambGrad = this.ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, AMBIENT_LIGHT_RADIUS);
+    const ambGrad = this.ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, AMBIENT_LIGHT_RADIUS * zoom);
     ambGrad.addColorStop(0,   'rgba(0,0,0,1)');
     ambGrad.addColorStop(0.7, 'rgba(0,0,0,0.6)');
     ambGrad.addColorStop(1,   'rgba(0,0,0,0)');
     this.ctx.fillStyle = ambGrad;
     this.ctx.beginPath();
-    this.ctx.arc(screenX, screenY, AMBIENT_LIGHT_RADIUS, 0, Math.PI * 2);
+    this.ctx.arc(screenX, screenY, AMBIENT_LIGHT_RADIUS * zoom, 0, Math.PI * 2);
     this.ctx.fill();
 
     // 3. Torch — shadow-casting visibility polygon with soft gradient falloff
@@ -97,6 +98,7 @@ export class LightingSystem {
         playerPos.x, playerPos.y,
         TORCH_RADIUS,
         tiles,
+        zoom,
       );
 
       if (polygon.length >= 3) {
@@ -111,7 +113,7 @@ export class LightingSystem {
         this.ctx.clip();
 
         // Radial gradient falloff within the polygon (bright at center, fades at edge)
-        const torchGrad = this.ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, TORCH_RADIUS);
+        const torchGrad = this.ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, TORCH_RADIUS * zoom);
         torchGrad.addColorStop(0,    'rgba(0,0,0,1)');
         torchGrad.addColorStop(0.55, 'rgba(0,0,0,0.95)');
         torchGrad.addColorStop(0.85, 'rgba(0,0,0,0.55)');
@@ -130,8 +132,8 @@ export class LightingSystem {
     // 4. Glow layer — enemy eyes and item highlights drawn above the darkness
     this.glowGraphics.clear();
     for (const glow of [...enemyGlows, ...itemGlows]) {
-      const sx = glow.position.x + cameraX;
-      const sy = glow.position.y + cameraY;
+      const sx = glow.position.x * zoom + cameraX;
+      const sy = glow.position.y * zoom + cameraY;
       this.glowGraphics.circle(sx, sy, glow.radius);
       this.glowGraphics.fill({ color: glow.color, alpha: glow.alpha });
     }
@@ -148,6 +150,7 @@ export class LightingSystem {
     worldX: number, worldY: number,
     radius: number,
     tiles: TileType[][],
+    zoom = 1,
   ): [number, number][] {
     const mapH = tiles.length;
     const mapW = tiles[0]?.length ?? 0;
@@ -207,7 +210,7 @@ export class LightingSystem {
     for (const angle of angles) {
       const [wx, wy] = this.castRay(worldX, worldY, angle, radius, tiles, mapW, mapH);
       // Convert world → screen coords
-      points.push([wx - worldX + screenX, wy - worldY + screenY]);
+      points.push([(wx - worldX) * zoom + screenX, (wy - worldY) * zoom + screenY]);
     }
 
     return points;
