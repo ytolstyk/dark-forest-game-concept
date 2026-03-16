@@ -7,9 +7,10 @@ export class AudioSystem {
   private ambientGain: GainNode | null = null;
 
   // Chase
-  private chaseOsc1: OscillatorNode | null = null;
-  private chaseOsc2: OscillatorNode | null = null;
+  private chaseOsc: OscillatorNode | null = null;
+  private chasePulseOsc: OscillatorNode | null = null;
   private chaseGain: GainNode | null = null;
+  private chaseDistGain: GainNode | null = null;
   private chaseActive = false;
 
   // Torch
@@ -197,39 +198,71 @@ export class AudioSystem {
     if (!this.ctx || !this.masterGain || this.chaseActive) return;
     this.chaseActive = true;
 
+    // Distance-controlled outer gain (starts silent; updateLeshenChaseVolume drives it)
+    this.chaseDistGain = this.ctx.createGain();
+    this.chaseDistGain.gain.value = 0;
+
+    // Base gain
     this.chaseGain = this.ctx.createGain();
-    this.chaseGain.gain.value = 0.12;
+    this.chaseGain.gain.value = 0.18;
 
-    this.chaseOsc1 = this.ctx.createOscillator();
-    this.chaseOsc1.type = 'sawtooth';
-    this.chaseOsc1.frequency.value = 100;
+    // Deep pulse tone
+    this.chaseOsc = this.ctx.createOscillator();
+    this.chaseOsc.type = 'sawtooth';
+    this.chaseOsc.frequency.value = 55;
 
-    this.chaseOsc2 = this.ctx.createOscillator();
-    this.chaseOsc2.type = 'sawtooth';
-    this.chaseOsc2.frequency.value = 103;
+    // Pulse LFO — modulates gain so the sound throbs
+    this.chasePulseOsc = this.ctx.createOscillator();
+    this.chasePulseOsc.type = 'sine';
+    this.chasePulseOsc.frequency.value = 1.8; // throbs ~1.8 times per second
+
+    const lfoGain = this.ctx.createGain();
+    lfoGain.gain.value = 0.5; // pulse depth: gain swings 0 → 1
+
+    // Bias the LFO output so gain stays positive (offset +0.5, amplitude 0.5 → range 0..1)
+    const lfoOffset = this.ctx.createConstantSource();
+    lfoOffset.offset.value = 0.5;
+
+    const pulseGain = this.ctx.createGain();
+    pulseGain.gain.value = 0; // driven by lfoOffset + lfoGain
+    lfoOffset.connect(pulseGain.gain);
+    this.chasePulseOsc.connect(lfoGain);
+    lfoGain.connect(pulseGain.gain);
 
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.value = 400;
+    filter.frequency.value = 300;
 
-    this.chaseOsc1.connect(filter);
-    this.chaseOsc2.connect(filter);
-    filter.connect(this.chaseGain);
-    this.chaseGain.connect(this.masterGain);
+    this.chaseOsc.connect(filter);
+    filter.connect(pulseGain);
+    pulseGain.connect(this.chaseGain);
+    this.chaseGain.connect(this.chaseDistGain);
+    this.chaseDistGain.connect(this.masterGain);
 
-    this.chaseOsc1.start();
-    this.chaseOsc2.start();
+    lfoOffset.start();
+    this.chasePulseOsc.start();
+    this.chaseOsc.start();
+  }
+
+  /** Call every frame while leshen is chasing. dist is pixels to leshen. */
+  updateLeshenChaseVolume(dist: number) {
+    if (!this.chaseDistGain || !this.ctx) return;
+    const MAX_DIST = 600; // fully silent beyond this
+    const MIN_DIST = 80;  // max volume within this
+    const t = 1 - Math.min(1, Math.max(0, (dist - MIN_DIST) / (MAX_DIST - MIN_DIST)));
+    this.chaseDistGain.gain.setTargetAtTime(t, this.ctx.currentTime, 0.15);
   }
 
   stopChaseMusic() {
     if (!this.chaseActive) return;
     this.chaseActive = false;
 
-    this.chaseOsc1?.stop();
-    this.chaseOsc2?.stop();
-    this.chaseOsc1 = null;
-    this.chaseOsc2 = null;
+    this.chaseOsc?.stop();
+    this.chasePulseOsc?.stop();
+    this.chaseOsc = null;
+    this.chasePulseOsc = null;
     this.chaseGain = null;
+    this.chaseDistGain = null;
   }
 
   playPickup() {

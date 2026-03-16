@@ -203,15 +203,19 @@ export class GameScene {
     this.anyEnemyChasing = anyChasing;
 
     // Leshen growl — plays whenever the Leshen has locked on
-    const leshenNowChasing = this.enemies.some(
-      (e) => e.type === EnemyType.LESHEN && e.hasDetectedPlayer
-    );
+    const leshen = this.enemies.find((e) => e.type === EnemyType.LESHEN);
+    const leshenNowChasing = !!leshen?.hasDetectedPlayer;
     if (leshenNowChasing && !this.leshenChasing) {
       this.audio.startLeshenGrowl();
     } else if (!leshenNowChasing && this.leshenChasing) {
       this.audio.stopLeshenGrowl();
     }
     this.leshenChasing = leshenNowChasing;
+
+    // Drive chase music volume by distance to leshen
+    if (leshen && this.anyEnemyChasing) {
+      this.audio.updateLeshenChaseVolume(distance(leshen.position, this.player.position));
+    }
 
     // 7. Collectible interactions
     for (const c of this.collectibles) {
