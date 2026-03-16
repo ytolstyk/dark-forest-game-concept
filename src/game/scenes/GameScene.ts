@@ -214,6 +214,7 @@ export class GameScene {
     const leshen = this.enemies.find((e) => e.type === EnemyType.LESHEN);
     const leshenNowChasing = !!leshen?.hasDetectedPlayer;
     if (leshenNowChasing && !this.leshenChasing) {
+      this.audio.playLeshenDetectGrowl();
       this.audio.startLeshenGrowl();
     } else if (!leshenNowChasing && this.leshenChasing) {
       this.audio.stopLeshenGrowl();

@@ -152,6 +152,56 @@ export class AudioSystem {
     }
   }
 
+  playLeshenDetectGrowl() {
+    if (!this.ctx || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+
+    // Deep guttural burst — low sawtooth with noise layer
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.35, now + 0.08);
+    gain.gain.linearRampToValueAtTime(0, now + 0.9);
+
+    const osc = this.ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(80, now);
+    osc.frequency.linearRampToValueAtTime(40, now + 0.9);
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 220;
+    filter.Q.value = 4;
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(now);
+    osc.stop(now + 0.9);
+
+    // Noise layer for texture
+    const bufSize = Math.floor(this.ctx.sampleRate * 0.9);
+    const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) d[i] = Math.random() * 2 - 1;
+
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(0, now);
+    noiseGain.gain.linearRampToValueAtTime(0.12, now + 0.08);
+    noiseGain.gain.linearRampToValueAtTime(0, now + 0.9);
+
+    const noiseFilter = this.ctx.createBiquadFilter();
+    noiseFilter.type = 'bandpass';
+    noiseFilter.frequency.value = 120;
+    noiseFilter.Q.value = 2;
+
+    const noiseSrc = this.ctx.createBufferSource();
+    noiseSrc.buffer = buf;
+    noiseSrc.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(this.masterGain);
+    noiseSrc.start(now);
+  }
+
   startLeshenGrowl() {
     if (!this.ctx || !this.masterGain || this.leshenGrowlActive) return;
     this.leshenGrowlActive = true;
