@@ -383,16 +383,14 @@ export class GameScene {
 
   private handleDeath() {
     this.gameOver = true;
-    this.audio.stopChaseMusic();
-    this.audio.stopLeshenGrowl();
+    this.audio.stopAll();
     this.audio.playDeath();
     this.onStateChange(GameState.GAME_OVER);
   }
 
   private handleWin() {
     this.gameOver = true;
-    this.audio.stopChaseMusic();
-    this.audio.stopLeshenGrowl();
+    this.audio.stopAll();
     this.audio.playWin();
     this.onStateChange(GameState.WIN);
   }

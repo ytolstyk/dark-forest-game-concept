@@ -369,11 +369,24 @@ export class AudioSystem {
     });
   }
 
-  destroy() {
+  stopAll() {
     this.stopChaseMusic();
     this.stopLeshenGrowl();
-    this.torchNoiseSource?.stop();
-    this.ambientSource?.stop();
+    if (this.torchNoiseSource) {
+      this.torchNoiseSource.stop();
+      this.torchNoiseSource = null;
+      this.torchGain = null;
+    }
+    if (this.ambientSource) {
+      this.ambientSource.stop();
+      this.ambientSource = null;
+      this.ambientGain = null;
+    }
+    this.footstepCounter = 0;
+  }
+
+  destroy() {
+    this.stopAll();
     this.ctx?.close();
     this.initialized = false;
   }
