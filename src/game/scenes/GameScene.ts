@@ -1,6 +1,6 @@
 import { Application, Container, Graphics } from 'pixi.js';
 import { GameState, EnemyState, EnemyType, CollectibleType, TileType } from '../types';
-import { MAX_HEAR_DISTANCE, LESHEN_GLOW_COLOR, LESHEN_GLOW_RADIUS, TILE_SIZE } from '../constants';
+import { MAX_HEAR_DISTANCE, LESHEN_GLOW_COLOR, LESHEN_GLOW_RADIUS, TILE_SIZE, SPIDER_WEB_SLOW } from '../constants';
 import { distance } from '../utils/math';
 import { generateMap } from '../map/MapGenerator';
 import { TileMap } from '../map/TileMap';
@@ -176,11 +176,21 @@ export class GameScene {
     const isMoving = move.x !== 0 || move.y !== 0;
 
     // 4. Tile collision
-    const newX = this.player.position.x + move.x;
-    const newY = this.player.position.y + move.y;
-
     // Hitbox is centered at the legs (y+20 from sprite origin), radius 6
     const legOffsetY = 20;
+
+    // Spider web: slow player to half speed
+    if (isMoving) {
+      const tileX = Math.floor(this.player.position.x / TILE_SIZE);
+      const tileY = Math.floor((this.player.position.y + legOffsetY) / TILE_SIZE);
+      if (this.tiles[tileY]?.[tileX] === TileType.SPIDER_WEB) {
+        move.x *= SPIDER_WEB_SLOW;
+        move.y *= SPIDER_WEB_SLOW;
+      }
+    }
+
+    const newX = this.player.position.x + move.x;
+    const newY = this.player.position.y + move.y;
     const hitRadius = 6;
     if (this.collision.canMoveTo(newX, newY + legOffsetY, hitRadius)) {
       this.player.position.x = newX;

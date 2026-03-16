@@ -5,6 +5,7 @@ export const MAP_PIXEL_WIDTH = MAP_WIDTH * TILE_SIZE;
 export const MAP_PIXEL_HEIGHT = MAP_HEIGHT * TILE_SIZE;
 
 export const PLAYER_SPEED = 3;
+export const SPIDER_WEB_SLOW = 0.5;
 export const ENEMY_PATROL_SPEED = 1;
 export const ENEMY_CHASE_SPEED = 3.2;
 export const LURKER_CHASE_SPEED = PLAYER_SPEED * 0.5; // 2.1 px/frame
@@ -55,4 +56,5 @@ export const COLORS = {
   FENCE_WOOD: 0x7a5830,
   PROP_GROUND: 0x2d5a1e,
   TRACTOR_RUST: 0x4a3020,
+  SPIDER_WEB: 0x2d5a1e,
 };

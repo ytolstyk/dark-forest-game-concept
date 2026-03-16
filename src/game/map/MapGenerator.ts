@@ -62,6 +62,9 @@ export function generateMap(): MapData {
   // Place forest objects: fence lines, props (shovels/crates/etc.), tractors
   placeForestObjects(tiles);
 
+  // Place spider webs next to tree and building wall tiles
+  placeSpiderWebs(tiles);
+
   // Place bridges over rivers at path crossings
   placeBridges(tiles);
 
@@ -121,6 +124,7 @@ const WALKABLE_TILES = new Set<TileType>([
   TileType.BUILDING_FLOOR,
   TileType.ROAD,
   TileType.PROP,
+  TileType.SPIDER_WEB,
 ]);
 
 function isTileWalkable(tile: TileType): boolean {
@@ -382,6 +386,37 @@ function placePaths(tiles: TileType[][]) {
       x += dx + (Math.random() - 0.5) * 0.8;
       y += dy + (Math.random() - 0.5) * 0.8;
     }
+  }
+}
+
+function placeSpiderWebs(tiles: TileType[][]) {
+  const isWebHost = (t: TileType) =>
+    t === TileType.TREE || t === TileType.DENSE_TREE || t === TileType.BUILDING_WALL;
+  const isGrass = (t: TileType) =>
+    t === TileType.GRASS || t === TileType.TALL_GRASS;
+
+  // Collect all grass tiles that are adjacent (4-way) to a tree or wall
+  const candidates: [number, number][] = [];
+  for (let y = 1; y < MAP_HEIGHT - 1; y++) {
+    for (let x = 1; x < MAP_WIDTH - 1; x++) {
+      if (!isGrass(tiles[y][x])) continue;
+      const neighbors = [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]] as [number, number][];
+      if (neighbors.some(([nx, ny]) => isWebHost(tiles[ny][nx]))) {
+        candidates.push([x, y]);
+      }
+    }
+  }
+
+  // Shuffle and take ~30 webs
+  for (let i = candidates.length - 1; i > 0; i--) {
+    const j = randomInt(0, i);
+    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+  }
+
+  const webCount = Math.min(30, candidates.length);
+  for (let i = 0; i < webCount; i++) {
+    const [wx, wy] = candidates[i];
+    tiles[wy][wx] = TileType.SPIDER_WEB;
   }
 }
 

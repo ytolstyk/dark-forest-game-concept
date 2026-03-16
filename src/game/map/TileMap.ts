@@ -482,6 +482,54 @@ export class TileMap {
         break;
       }
 
+      case TileType.SPIDER_WEB: {
+        // Draw grass micro-variation underneath
+        const gv = (hash % 10) - 5;
+        if (gv > 0) {
+          ctx.fillStyle = `rgba(60,${128 + gv},50,0.13)`;
+          ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+        }
+
+        // Cobweb — radial spokes + concentric arc rings
+        const wcx = px + 14 + (hash % 5);
+        const wcy = py + 13 + (hash2 % 6);
+        const spokeCount = 6 + (hash3 % 3);
+        const rings = 3;
+        const maxR = 10 + (hash % 4);
+
+        ctx.save();
+        ctx.globalAlpha = 0.72;
+        ctx.strokeStyle = 'rgba(230,228,210,0.88)';
+        ctx.lineWidth = 0.7;
+
+        // Spokes
+        for (let s = 0; s < spokeCount; s++) {
+          const angle = (s / spokeCount) * Math.PI * 2;
+          ctx.beginPath();
+          ctx.moveTo(wcx, wcy);
+          ctx.lineTo(wcx + Math.cos(angle) * maxR, wcy + Math.sin(angle) * maxR);
+          ctx.stroke();
+        }
+
+        // Concentric arc rings connecting the spokes
+        for (let r = 1; r <= rings; r++) {
+          const radius = (r / rings) * maxR;
+          ctx.beginPath();
+          for (let s = 0; s <= spokeCount; s++) {
+            const angle = (s / spokeCount) * Math.PI * 2;
+            const rx = wcx + Math.cos(angle) * radius;
+            const ry = wcy + Math.sin(angle) * radius;
+            if (s === 0) ctx.moveTo(rx, ry);
+            else ctx.lineTo(rx, ry);
+          }
+          ctx.closePath();
+          ctx.stroke();
+        }
+
+        ctx.restore();
+        break;
+      }
+
       case TileType.TRACTOR: {
         // Top-down abandoned farm tractor
         // Drop shadow

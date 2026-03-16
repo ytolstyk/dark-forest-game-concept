@@ -16,6 +16,7 @@ export const TILE_WALKABLE: Record<TileType, boolean> = {
   [TileType.FENCE]: false,
   [TileType.PROP]: true,
   [TileType.TRACTOR]: false,
+  [TileType.SPIDER_WEB]: true,
 };
 
 export const TILE_COLORS: Record<TileType, number> = {
@@ -33,6 +34,7 @@ export const TILE_COLORS: Record<TileType, number> = {
   [TileType.FENCE]: COLORS.FENCE_WOOD,
   [TileType.PROP]: COLORS.PROP_GROUND,
   [TileType.TRACTOR]: COLORS.TRACTOR_RUST,
+  [TileType.SPIDER_WEB]: COLORS.SPIDER_WEB,
 };
 
 export function isWalkable(tile: TileType): boolean {
