@@ -162,12 +162,15 @@ export class GameScene {
     const newX = this.player.position.x + move.x;
     const newY = this.player.position.y + move.y;
 
-    if (this.collision.canMoveTo(newX, newY, 8)) {
+    // Hitbox is centered at the legs (y+20 from sprite origin), radius 6
+    const legOffsetY = 20;
+    const hitRadius = 6;
+    if (this.collision.canMoveTo(newX, newY + legOffsetY, hitRadius)) {
       this.player.position.x = newX;
       this.player.position.y = newY;
-    } else if (this.collision.canMoveTo(newX, this.player.position.y, 8)) {
+    } else if (this.collision.canMoveTo(newX, this.player.position.y + legOffsetY, hitRadius)) {
       this.player.position.x = newX;
-    } else if (this.collision.canMoveTo(this.player.position.x, newY, 8)) {
+    } else if (this.collision.canMoveTo(this.player.position.x, newY + legOffsetY, hitRadius)) {
       this.player.position.y = newY;
     }
 
