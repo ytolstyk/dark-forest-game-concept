@@ -364,6 +364,197 @@ export class TileMap {
         }
         break;
       }
+
+      case TileType.FENCE: {
+        // Weathered wooden fence — two vertical posts with a horizontal rail
+        const postW = 4;
+        const postColor = '#6b4522';
+        const railColor = '#7d5828';
+        // Left post
+        ctx.fillStyle = postColor;
+        ctx.fillRect(px + 3, py + 1, postW, TILE_SIZE - 2);
+        // Right post
+        ctx.fillRect(px + TILE_SIZE - 7, py + 1, postW, TILE_SIZE - 2);
+        // Shadow edge on posts
+        ctx.fillStyle = 'rgba(0,0,0,0.28)';
+        ctx.fillRect(px + 3 + postW - 1, py + 2, 1, TILE_SIZE - 4);
+        ctx.fillRect(px + TILE_SIZE - 7 + postW - 1, py + 2, 1, TILE_SIZE - 4);
+        // Horizontal rail
+        const railY = py + Math.round(TILE_SIZE * 0.48);
+        ctx.fillStyle = railColor;
+        ctx.fillRect(px + 1, railY, TILE_SIZE - 2, 5);
+        // Wood grain on rail
+        ctx.strokeStyle = 'rgba(80,45,10,0.42)';
+        ctx.lineWidth = 1;
+        for (let gi = 0; gi < 4; gi++) {
+          const gx = px + 5 + gi * 7 + (hash % 3);
+          ctx.beginPath();
+          ctx.moveTo(gx, railY + 1);
+          ctx.lineTo(gx + 5, railY + 3);
+          ctx.stroke();
+        }
+        // Nail dots on posts
+        ctx.fillStyle = '#3a2510';
+        ctx.fillRect(px + 5, railY + 1, 2, 2);
+        ctx.fillRect(px + TILE_SIZE - 6, railY + 1, 2, 2);
+        break;
+      }
+
+      case TileType.PROP: {
+        // Subtle grass micro-variation for ground
+        const gv = (hash % 10) - 5;
+        if (gv > 0) {
+          ctx.fillStyle = `rgba(60,${128 + gv},50,0.13)`;
+          ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+        }
+        const propType = hash % 5;
+        if (propType === 0) {
+          // Shovel lying on ground
+          ctx.save();
+          ctx.translate(px + 15, py + 16);
+          ctx.rotate(-0.35 + (hash2 % 5) * 0.12);
+          ctx.fillStyle = '#7a5530';
+          ctx.fillRect(-2, -11, 3, 20); // handle
+          ctx.fillStyle = '#9a9080';
+          ctx.beginPath();
+          ctx.moveTo(-4, 9); ctx.lineTo(5, 9); ctx.lineTo(4, 15); ctx.lineTo(-3, 15);
+          ctx.closePath(); ctx.fill();
+          ctx.strokeStyle = '#6a6050'; ctx.lineWidth = 1; ctx.stroke();
+          ctx.restore();
+        } else if (propType === 1) {
+          // Axe
+          ctx.save();
+          ctx.translate(px + 16, py + 16);
+          ctx.rotate(0.6 + (hash2 % 4) * 0.2);
+          ctx.fillStyle = '#7a5530';
+          ctx.fillRect(-1, -12, 3, 22); // handle
+          ctx.fillStyle = '#8a8070';
+          ctx.beginPath();
+          ctx.moveTo(2, -10); ctx.lineTo(10, -5); ctx.lineTo(9, 3); ctx.lineTo(2, 1);
+          ctx.closePath(); ctx.fill();
+          ctx.strokeStyle = '#b0a090'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(10, -5); ctx.lineTo(9, 3); ctx.stroke();
+          ctx.restore();
+        } else if (propType === 2) {
+          // Wooden crate
+          const cw = 18, ch = 14;
+          const cx2 = px + 7, cy2 = py + 9;
+          ctx.fillStyle = '#7a6040';
+          ctx.fillRect(cx2, cy2, cw, ch);
+          ctx.strokeStyle = '#5a4020';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(cx2, cy2, cw, ch);
+          ctx.beginPath();
+          ctx.moveTo(cx2 + cw / 2, cy2); ctx.lineTo(cx2 + cw / 2, cy2 + ch);
+          ctx.moveTo(cx2, cy2 + ch / 2); ctx.lineTo(cx2 + cw, cy2 + ch / 2);
+          ctx.stroke();
+          ctx.fillStyle = 'rgba(255,255,255,0.06)';
+          ctx.fillRect(cx2 + 1, cy2 + 1, cw - 2, 3);
+        } else if (propType === 3) {
+          // Old barrel
+          const bx2 = px + 10, by2 = py + 7;
+          const bw = 12, bh = 16;
+          ctx.fillStyle = '#6b4e28';
+          ctx.fillRect(bx2, by2, bw, bh);
+          ctx.fillStyle = 'rgba(0,0,0,0.2)';
+          ctx.fillRect(bx2 + bw - 3, by2 + 1, 2, bh - 2);
+          ctx.strokeStyle = '#3a2810';
+          ctx.lineWidth = 1.5;
+          for (const oy of [3, 8, 13]) {
+            ctx.beginPath();
+            ctx.moveTo(bx2, by2 + oy); ctx.lineTo(bx2 + bw, by2 + oy); ctx.stroke();
+          }
+        } else {
+          // Scattered planks / debris
+          const plankColor = '#8a6840';
+          const angles = [-0.3 + (hash2 % 4) * 0.15, 0.7 + (hash3 % 3) * 0.2];
+          for (let i = 0; i < 2; i++) {
+            ctx.save();
+            ctx.translate(px + 9 + i * 9, py + 13 + i * 4);
+            ctx.rotate(angles[i]);
+            ctx.fillStyle = plankColor;
+            ctx.fillRect(-8, -2, 16, 3);
+            ctx.fillStyle = 'rgba(0,0,0,0.18)';
+            ctx.fillRect(-7, -1, 14, 1);
+            ctx.restore();
+          }
+        }
+        break;
+      }
+
+      case TileType.TRACTOR: {
+        // Top-down abandoned farm tractor
+        // Drop shadow
+        ctx.save();
+        ctx.globalAlpha = 0.38;
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.ellipse(px + 17, py + 24, 11, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // Large rear wheels
+        ctx.fillStyle = '#111';
+        ctx.beginPath(); ctx.arc(px + 5,  py + 22, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(px + 27, py + 22, 5, 0, Math.PI * 2); ctx.fill();
+        // Rear wheel hubs
+        ctx.fillStyle = '#3a2a18';
+        ctx.beginPath(); ctx.arc(px + 5,  py + 22, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(px + 27, py + 22, 2, 0, Math.PI * 2); ctx.fill();
+
+        // Small front wheels
+        ctx.fillStyle = '#1a1a1a';
+        ctx.beginPath(); ctx.arc(px + 9,  py + 10, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(px + 23, py + 10, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#3a2a18';
+        ctx.beginPath(); ctx.arc(px + 9,  py + 10, 1.5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(px + 23, py + 10, 1.5, 0, Math.PI * 2); ctx.fill();
+
+        // Main body (rusty red-brown)
+        ctx.fillStyle = '#7a3520';
+        ctx.fillRect(px + 8, py + 13, 16, 12);
+        // Rust patches
+        if (hash > 35)  { ctx.fillStyle = '#4a2012'; ctx.fillRect(px + 10, py + 15, 4, 3); }
+        if (hash2 > 48) { ctx.fillStyle = '#4a2012'; ctx.fillRect(px + 17, py + 19, 5, 3); }
+        // Body highlight
+        ctx.fillStyle = 'rgba(220,140,80,0.08)';
+        ctx.fillRect(px + 9, py + 13, 14, 2);
+
+        // Engine hood
+        ctx.fillStyle = '#6a3018';
+        ctx.fillRect(px + 10, py + 7, 12, 8);
+        // Hood line detail
+        ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(px + 16, py + 7); ctx.lineTo(px + 16, py + 14); ctx.stroke();
+
+        // Cab
+        ctx.fillStyle = '#5a3028';
+        ctx.fillRect(px + 9, py + 2, 14, 7);
+        // Cab window
+        ctx.fillStyle = 'rgba(80,120,160,0.38)';
+        ctx.fillRect(px + 11, py + 3, 10, 5);
+        // Window frame
+        ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px + 11, py + 3, 10, 5);
+        // Cab highlight
+        ctx.fillStyle = 'rgba(255,255,255,0.07)';
+        ctx.fillRect(px + 9, py + 2, 14, 2);
+
+        // Exhaust pipe
+        ctx.fillStyle = '#2a2218';
+        ctx.fillRect(px + 18, py - 1, 3, 5);
+        if (hash3 > 55) {
+          // Faint exhaust smudge
+          ctx.fillStyle = 'rgba(60,55,50,0.22)';
+          ctx.beginPath();
+          ctx.arc(px + 19, py - 3, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        break;
+      }
     }
   }
 

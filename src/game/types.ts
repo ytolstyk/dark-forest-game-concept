@@ -32,6 +32,9 @@ export const TileType = {
   BUILDING_WALL: 8,
   BUILDING_FLOOR: 9,
   ROAD: 10,
+  FENCE: 11,
+  PROP: 12,
+  TRACTOR: 13,
 } as const;
 export type TileType = (typeof TileType)[keyof typeof TileType];
 

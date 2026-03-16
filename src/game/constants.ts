@@ -52,4 +52,7 @@ export const COLORS = {
   KEY_COLOR: 0xffd700,
   FUEL_COLOR: 0xcc4444,
   CAR_COLOR: 0x6688aa,
+  FENCE_WOOD: 0x7a5830,
+  PROP_GROUND: 0x2d5a1e,
+  TRACTOR_RUST: 0x4a3020,
 };

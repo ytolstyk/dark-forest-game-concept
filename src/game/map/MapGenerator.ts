@@ -59,6 +59,9 @@ export function generateMap(): MapData {
   // Place buildings (small abandoned structures)
   placeBuildings(tiles);
 
+  // Place forest objects: fence lines, props (shovels/crates/etc.), tractors
+  placeForestObjects(tiles);
+
   // Place bridges over rivers at path crossings
   placeBridges(tiles);
 
@@ -117,6 +120,7 @@ const WALKABLE_TILES = new Set<TileType>([
   TileType.BRIDGE,
   TileType.BUILDING_FLOOR,
   TileType.ROAD,
+  TileType.PROP,
 ]);
 
 function isTileWalkable(tile: TileType): boolean {
@@ -198,6 +202,8 @@ function bfsToMainComponent(
       const nk = ny * MAP_WIDTH + nx;
       if (parent.has(nk)) continue;
       if (tiles[ny][nx] === TileType.BUILDING_WALL) continue; // never destroy walls
+      if (tiles[ny][nx] === TileType.FENCE) continue;        // never destroy fence
+      if (tiles[ny][nx] === TileType.TRACTOR) continue;      // never destroy tractor
       parent.set(nk, ck);
       queue.push([nx, ny]);
     }
@@ -324,7 +330,10 @@ function carveRivers(tiles: TileType[][], noise2D: (x: number, y: number) => num
 }
 
 function placePaths(tiles: TileType[][]) {
-  // Create a few winding paths
+  const isWater = (t: TileType) => t === TileType.DEEP_WATER || t === TileType.SHALLOW_WATER;
+  const isTree  = (t: TileType) => t === TileType.TREE || t === TileType.DENSE_TREE;
+  const isGrass = (t: TileType) => t === TileType.GRASS || t === TileType.TALL_GRASS;
+
   for (let p = 0; p < 5; p++) {
     let x = randomInt(10, MAP_WIDTH - 10);
     let y = randomInt(10, MAP_HEIGHT - 10);
@@ -333,19 +342,90 @@ function placePaths(tiles: TileType[][]) {
     const dy = Math.sin(angle);
 
     for (let step = 0; step < 150; step++) {
+      // Paths can fade out — probability ramps up after step 70
+      const fadeChance = step > 70 ? (step - 70) * 0.006 : 0;
+      if (Math.random() < fadeChance) break;
+
       const tx = Math.floor(x);
       const ty = Math.floor(y);
-      if (tx >= 0 && tx < MAP_WIDTH && ty >= 0 && ty < MAP_HEIGHT) {
-        if (tiles[ty][tx] === TileType.GRASS || tiles[ty][tx] === TileType.TALL_GRASS) {
-          tiles[ty][tx] = TileType.DIRT_PATH;
-          // Widen path
-          if (tx + 1 < MAP_WIDTH && (tiles[ty][tx + 1] === TileType.GRASS || tiles[ty][tx + 1] === TileType.TALL_GRASS)) {
-            tiles[ty][tx + 1] = TileType.DIRT_PATH;
+
+      if (tx >= 1 && tx < MAP_WIDTH - 1 && ty >= 0 && ty < MAP_HEIGHT) {
+        const tile = tiles[ty][tx];
+        // Skip buildings entirely — path passes through/around them
+        if (tile !== TileType.BUILDING_WALL && tile !== TileType.BUILDING_FLOOR) {
+          let placedType: TileType;
+          if (isWater(tile)) {
+            // Bridge over water
+            tiles[ty][tx] = TileType.BRIDGE;
+            placedType = TileType.BRIDGE;
+          } else if (isTree(tile)) {
+            // Clear trees for the track
+            tiles[ty][tx] = TileType.DIRT_PATH;
+            placedType = TileType.DIRT_PATH;
+          } else if (isGrass(tile) || tile === TileType.BRIDGE || tile === TileType.ROAD) {
+            tiles[ty][tx] = TileType.DIRT_PATH;
+            placedType = TileType.DIRT_PATH;
+          } else {
+            placedType = tile; // existing path/bridge, no change needed
+          }
+
+          // Widen path: apply same tile type to neighbour tile (tx+1)
+          const right = tiles[ty][tx + 1];
+          if (placedType === TileType.BRIDGE) {
+            if (isWater(right)) tiles[ty][tx + 1] = TileType.BRIDGE;
+          } else if (placedType === TileType.DIRT_PATH) {
+            if (isGrass(right) || isTree(right)) tiles[ty][tx + 1] = TileType.DIRT_PATH;
           }
         }
       }
+
       x += dx + (Math.random() - 0.5) * 0.8;
       y += dy + (Math.random() - 0.5) * 0.8;
+    }
+  }
+}
+
+function placeForestObjects(tiles: TileType[][]) {
+  const isGrass = (t: TileType) => t === TileType.GRASS || t === TileType.TALL_GRASS;
+
+  // Fence segments — weathered wooden fences scattered across the forest
+  const fenceCount = randomInt(4, 7);
+  for (let f = 0; f < fenceCount; f++) {
+    const fx = randomInt(10, MAP_WIDTH - 10);
+    const fy = randomInt(10, MAP_HEIGHT - 10);
+    const length = randomInt(4, 10);
+    const horiz = Math.random() > 0.5;
+    for (let i = 0; i < length; i++) {
+      const tx = horiz ? fx + i : fx;
+      const ty = horiz ? fy : fy + i;
+      if (tx < 0 || tx >= MAP_WIDTH || ty < 0 || ty >= MAP_HEIGHT) continue;
+      if (isGrass(tiles[ty][tx])) {
+        tiles[ty][tx] = TileType.FENCE;
+      }
+    }
+  }
+
+  // Small props scattered in the forest: shovels, axes, crates, barrels, planks
+  let propsPlaced = 0;
+  for (let attempt = 0; attempt < 600 && propsPlaced < 18; attempt++) {
+    const px = randomInt(8, MAP_WIDTH - 8);
+    const py = randomInt(8, MAP_HEIGHT - 8);
+    if (isGrass(tiles[py][px])) {
+      tiles[py][px] = TileType.PROP;
+      propsPlaced++;
+    }
+  }
+
+  // Abandoned tractors — each placed in a clear grassy spot
+  const tractorCount = randomInt(1, 3);
+  for (let t = 0; t < tractorCount; t++) {
+    for (let attempt = 0; attempt < 120; attempt++) {
+      const tx = randomInt(12, MAP_WIDTH - 12);
+      const ty = randomInt(12, MAP_HEIGHT - 12);
+      if (isGrass(tiles[ty][tx])) {
+        tiles[ty][tx] = TileType.TRACTOR;
+        break;
+      }
     }
   }
 }
