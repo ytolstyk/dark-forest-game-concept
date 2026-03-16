@@ -1,4 +1,4 @@
-import { Application, Container } from 'pixi.js';
+import { Application, Container, Graphics } from 'pixi.js';
 import { GameState, EnemyState, EnemyType, CollectibleType, TileType } from '../types';
 import { MAX_HEAR_DISTANCE, LESHEN_GLOW_COLOR, LESHEN_GLOW_RADIUS } from '../constants';
 import { distance } from '../utils/math';
@@ -38,6 +38,10 @@ export class GameScene {
   private audio: AudioSystem;
   private particles: ParticleEffects;
 
+  private footstepContainer: Container;
+  private footstepCount = 0;
+  private readonly FOOTSTEP_MAX_COUNT = 400;
+
   private anyEnemyChasing = false;
   private leshenChasing = false;
   private gameOver = false;
@@ -53,6 +57,7 @@ export class GameScene {
     this.worldContainer = new Container();
     this.entityContainer = new Container();
 
+    this.footstepContainer = new Container();
     this.tileMap = new TileMap();
     this.input = new InputSystem();
     this.camera = new CameraSystem();
@@ -106,8 +111,12 @@ export class GameScene {
       new Collectible(mapData.fuelPosition.x, mapData.fuelPosition.y, CollectibleType.FUEL),
     ];
 
-    // Build scene graph: map -> entities -> particles -> darkness -> glow
+    // Wire up footstep spawning
+    this.player.onFootstep = (foot) => this.spawnFootstep(foot);
+
+    // Build scene graph: map -> footsteps -> entities -> particles -> darkness -> glow
     this.worldContainer.addChild(this.tileMap.container);
+    this.worldContainer.addChild(this.footstepContainer);
     this.worldContainer.addChild(this.entityContainer);
 
     for (const c of this.collectibles) {
@@ -221,8 +230,10 @@ export class GameScene {
       }
     }
 
-    // 8. Update player visual
+    // 8. Update player (leg animation + footstep callbacks)
+    this.player.update(isMoving);
     this.player.updateVisual();
+
 
     // 9. Camera
     this.camera.update(this.player.position, screenW, screenH);
@@ -289,6 +300,31 @@ export class GameScene {
     this.audio.updateFootsteps(isMoving);
     this.audio.updateEnemyGrowl(closestEnemyDist, MAX_HEAR_DISTANCE);
   };
+
+  private spawnFootstep(foot: 'left' | 'right') {
+    const side = foot === 'left' ? -1 : 1;
+    // Offset perpendicular to facing direction
+    const perpX = -this.player.facing.y * side * 4;
+    const perpY = this.player.facing.x * side * 4;
+
+    const g = new Graphics();
+    g.ellipse(0, 0, 2.5, 4);
+    g.fill(0x111108);
+    g.x = this.player.position.x + perpX;
+    g.y = this.player.position.y + perpY + 18;
+    g.rotation = Math.atan2(this.player.facing.y, this.player.facing.x) + Math.PI / 2;
+    g.alpha = 0.45;
+
+    this.footstepContainer.addChild(g);
+    this.footstepCount++;
+
+    // Evict oldest if over cap
+    if (this.footstepCount > this.FOOTSTEP_MAX_COUNT) {
+      const old = this.footstepContainer.children[0];
+      if (old) this.footstepContainer.removeChildAt(0).destroy();
+      this.footstepCount--;
+    }
+  }
 
   private handleDeath() {
     this.gameOver = true;
