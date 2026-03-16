@@ -192,6 +192,8 @@ export class GameScene {
     const newX = this.player.position.x + move.x;
     const newY = this.player.position.y + move.y;
     const hitRadius = 6;
+    const prevX = this.player.position.x;
+    const prevY = this.player.position.y;
     if (this.collision.canMoveTo(newX, newY + legOffsetY, hitRadius)) {
       this.player.position.x = newX;
       this.player.position.y = newY;
@@ -200,6 +202,7 @@ export class GameScene {
     } else if (this.collision.canMoveTo(this.player.position.x, newY + legOffsetY, hitRadius)) {
       this.player.position.y = newY;
     }
+    const actuallyMoved = this.player.position.x !== prevX || this.player.position.y !== prevY;
 
     // 5. Enemy AI
     let regularChasing = false;
@@ -275,7 +278,7 @@ export class GameScene {
     }
 
     // 8. Update player (leg animation + footstep callbacks)
-    this.player.update(isMoving);
+    this.player.update(actuallyMoved);
     this.player.updateVisual();
 
 
@@ -369,7 +372,7 @@ export class GameScene {
     );
 
     // 12. Audio
-    this.audio.updateFootsteps(isMoving);
+    this.audio.updateFootsteps(actuallyMoved);
     this.audio.updateEnemyGrowl(closestEnemyDist, MAX_HEAR_DISTANCE);
   };
 
