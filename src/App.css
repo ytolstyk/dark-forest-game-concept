@@ -148,6 +148,50 @@
   margin-bottom: 2px;
 }
 
+.heart-rate-widget {
+  position: absolute;
+  top: 98px;
+  left: 20px;
+  z-index: 5;
+  padding: 5px 14px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid;
+  border-radius: 4px;
+  pointer-events: none;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  transition: color 0.6s, border-color 0.6s;
+}
+
+.hr-icon {
+  font-size: 13px;
+  animation: hr-pulse 0.6s ease-in-out infinite alternate;
+}
+
+.hr-value {
+  font-size: 15px;
+  letter-spacing: 1px;
+  font-weight: bold;
+}
+
+.hr-unit {
+  font-size: 10px;
+  opacity: 0.7;
+  letter-spacing: 1px;
+}
+
+@keyframes hr-pulse {
+  from { transform: scale(1); }
+  to   { transform: scale(1.25); }
+}
+
+.end-stat-peak {
+  color: #ff6666;
+}
+
 .step-counter {
   position: absolute;
   top: 60px;

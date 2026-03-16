@@ -10,6 +10,21 @@ function formatTime(seconds: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
+function HeartRateWidget({ bpm }: { bpm: number }) {
+  const danger = bpm >= 150
+  const elevated = bpm >= 110
+  const color = danger ? '#ff3333' : elevated ? '#ff8844' : '#88cc88'
+  // pulse animation period matches actual bpm
+  const pulseDuration = `${(60 / bpm / 2).toFixed(2)}s`
+  return (
+    <div className="heart-rate-widget" style={{ borderColor: color, color }}>
+      <span className="hr-icon" style={{ animationDuration: pulseDuration }}>♥</span>
+      <span className="hr-value">{bpm}</span>
+      <span className="hr-unit">bpm</span>
+    </div>
+  )
+}
+
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const gameRef = useRef<Game | null>(null)
@@ -20,6 +35,9 @@ function App() {
   const [totalSteps, setTotalSteps] = useState(0)
   const [elapsed, setElapsed] = useState(0)
   const startTimeRef = useRef<number>(0)
+  const [heartRate, setHeartRate] = useState(75)
+  const [endAvgHR, setEndAvgHR] = useState(0)
+  const [endMaxHR, setEndMaxHR] = useState(0)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -49,9 +67,20 @@ function App() {
         setTorchOn(scene.torchOn)
         setInventory({ ...scene.inventory })
         setTotalSteps(scene.totalSteps)
+        setHeartRate(scene.heartRate)
       }
     }, 100)
     return () => clearInterval(interval)
+  }, [gameState])
+
+  // Capture heart rate stats when game ends
+  useEffect(() => {
+    if (gameState !== GameState.GAME_OVER && gameState !== GameState.WIN) return
+    const scene = gameRef.current?.scene
+    if (scene) {
+      setEndAvgHR(scene.avgHeartRate)
+      setEndMaxHR(scene.maxHeartRate)
+    }
   }, [gameState])
 
   // Timer — runs while playing
@@ -177,6 +206,7 @@ function App() {
           </div>
           <div className="game-timer">{formatTime(elapsed)}</div>
           <div className="step-counter">👣 {totalSteps}</div>
+          <HeartRateWidget bpm={heartRate} />
           <div className={`torch-indicator ${torchOn ? 'on' : 'off'}`}>
             {torchOn ? 'TORCH ON' : 'TORCH OFF'}
           </div>
@@ -210,6 +240,16 @@ function App() {
               <span className="end-stat-label">steps taken</span>
               <span className="end-stat-value">👣 {totalSteps}</span>
             </div>
+            <div className="end-stat-divider" />
+            <div className="end-stat">
+              <span className="end-stat-label">avg heart rate</span>
+              <span className="end-stat-value">♥ {endAvgHR} bpm</span>
+            </div>
+            <div className="end-stat-divider" />
+            <div className="end-stat">
+              <span className="end-stat-label">peak heart rate</span>
+              <span className="end-stat-value end-stat-peak">♥ {endMaxHR} bpm</span>
+            </div>
           </div>
           <button className="btn" onClick={startGame}>Try Again</button>
         </div>
@@ -227,6 +267,16 @@ function App() {
             <div className="end-stat">
               <span className="end-stat-label">steps taken</span>
               <span className="end-stat-value">👣 {totalSteps}</span>
+            </div>
+            <div className="end-stat-divider" />
+            <div className="end-stat">
+              <span className="end-stat-label">avg heart rate</span>
+              <span className="end-stat-value">♥ {endAvgHR} bpm</span>
+            </div>
+            <div className="end-stat-divider" />
+            <div className="end-stat">
+              <span className="end-stat-label">peak heart rate</span>
+              <span className="end-stat-value end-stat-peak">♥ {endMaxHR} bpm</span>
             </div>
           </div>
           <button className="btn" onClick={startGame}>Play Again</button>

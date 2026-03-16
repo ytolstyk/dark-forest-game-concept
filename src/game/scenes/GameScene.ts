@@ -50,6 +50,14 @@ export class GameScene {
   torchOn = false;
   inventory = { keys: false, fuel: false };
   totalSteps = 0;
+  heartRate = 75;
+  avgHeartRate = 75;
+  maxHeartRate = 75;
+
+  // Heart rate simulation internals
+  private hrFrameTimer = 0;
+  private hrSampleSum = 75;
+  private hrSampleCount = 1;
 
   constructor(app: Application, onStateChange: (state: string) => void) {
     this.app = app;
@@ -247,6 +255,13 @@ export class GameScene {
     this.player.updateVisual();
 
 
+    // 8b. Heart rate simulation (ticks once per second at ~60 fps)
+    this.hrFrameTimer++;
+    if (this.hrFrameTimer >= 60) {
+      this.hrFrameTimer = 0;
+      this.updateHeartRate(isMoving, closestEnemyDist);
+    }
+
     // 9. Camera
     this.camera.update(this.player.position, screenW, screenH, zoom);
     this.camera.apply(this.worldContainer, zoom);
@@ -337,6 +352,32 @@ export class GameScene {
       if (old) this.footstepContainer.removeChildAt(0).destroy();
       this.footstepCount--;
     }
+  }
+
+  private updateHeartRate(isMoving: boolean, closestEnemyDist: number) {
+    // Base target from movement state
+    const baseLow = isMoving ? 90 : 60;
+    const baseHigh = isMoving ? 130 : 90;
+    let target = baseLow + Math.random() * (baseHigh - baseLow);
+
+    // Enemy proximity bonus — scales from 0 at 600 px to full at 80 px
+    const ENEMY_MAX_DIST = 600;
+    const ENEMY_MIN_DIST = 80;
+    if (closestEnemyDist < ENEMY_MAX_DIST) {
+      const t = 1 - Math.min(1, Math.max(0, (closestEnemyDist - ENEMY_MIN_DIST) / (ENEMY_MAX_DIST - ENEMY_MIN_DIST)));
+      target = target + t * (185 - target);
+    }
+
+    // Max drift per second: 15 bpm
+    const maxDelta = 15;
+    const delta = Math.max(-maxDelta, Math.min(maxDelta, target - this.heartRate));
+    this.heartRate = Math.round(Math.max(60, Math.min(185, this.heartRate + delta)));
+
+    // Running stats
+    this.hrSampleSum += this.heartRate;
+    this.hrSampleCount++;
+    this.avgHeartRate = Math.round(this.hrSampleSum / this.hrSampleCount);
+    if (this.heartRate > this.maxHeartRate) this.maxHeartRate = this.heartRate;
   }
 
   private handleDeath() {
