@@ -46,9 +46,10 @@ export class ParticleEffects {
     // Torch fire particles
     if (torchOn) {
       if (this.time % 2 === 0) {
+        // Torch flame is at x+16 (right arm), y-22 (above head) in local player space
         this.torchParticles.push({
-          x: playerPos.x + (Math.random() - 0.5) * 8,
-          y: playerPos.y - 10,
+          x: playerPos.x + 16 + (Math.random() - 0.5) * 4,
+          y: playerPos.y - 22 + (Math.random() - 0.5) * 3,
           vx: (Math.random() - 0.5) * 0.5,
           vy: -1 - Math.random() * 1.5,
           life: 30 + Math.random() * 20,
