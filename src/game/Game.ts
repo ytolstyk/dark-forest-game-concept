@@ -8,6 +8,7 @@ export class Game {
   private _initialized = false;
   private _destroyed = false;
   private _tickerCallback: (() => void) | null = null;
+  private _onResize: (() => void) | null = null;
 
   constructor() {
     this.app = new Application();
@@ -38,6 +39,7 @@ export class Game {
       this.app.renderer.resize(window.innerWidth, window.innerHeight);
     };
     window.addEventListener('resize', onResize);
+    this._onResize = onResize;
   }
 
   onStateChange(callback: (state: string) => void) {
@@ -76,6 +78,10 @@ export class Game {
   destroy() {
     this._destroyed = true;
     if (!this._initialized) return;
+    if (this._onResize) {
+      window.removeEventListener('resize', this._onResize);
+      this._onResize = null;
+    }
     this.stopGame();
     this.app.destroy();
   }

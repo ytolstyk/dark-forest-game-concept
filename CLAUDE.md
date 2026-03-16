@@ -12,9 +12,10 @@ Stack: React 19 (shell/HUD) + Pixi.js v8 (WebGL game renderer) + TypeScript + Vi
 
 ```bash
 npm run dev       # Dev server with HMR — http://localhost:5173
-npm run build     # tsc -b && vite build → dist/
+rtk tsc                     # Type-check (tsc -b)
+rtk err npm run build       # Production build (vite build)
+rtk lint                    # ESLint (flat config, v9+)
 npm run preview   # Serve dist/ locally
-npm run lint      # ESLint (flat config)
 ```
 
 The `build` script runs `tsc -b` first (type check) then `vite build`. Always run `npm run lint` before committing.
@@ -62,33 +63,38 @@ src/
 ## Key Design Patterns
 
 ### React / Pixi split
+
 React owns the overlay UI (menu, loading, HUD, game-over). Pixi owns everything inside the `<canvas>`. They communicate via `game.onStateChange()` callbacks and a 100 ms polling interval for HUD values (`torchOn`, `inventory`).
 
 ### React StrictMode double-mount
+
 `Game.init()` is called inside `useEffect`. In development, StrictMode mounts → unmounts → remounts. The guard in `Game.ts` calls `app.stop()` (not `app.destroy()`) on the first (destroyed) instance to avoid killing the shared WebGL context before the second instance can use it.
 
 ### Lighting system
+
 `LightingSystem` draws darkness to an offscreen `HTMLCanvasElement` using Canvas 2D composite operations (`destination-out` radial gradient for the torch halo), then uploads it to a Pixi `ImageSource` via `source.update()`. The `Sprite` that holds this texture must **not** have its `width`/`height` set manually — doing so scales relative to the initial 1×1 texture size and makes the sprite render at `screen²` pixels.
 
 ### Map connectivity
+
 After all terrain, rivers, and buildings are placed, `ensureConnectivity()` in `MapGenerator.ts` runs a flood-fill from the player spawn to find the main walkable component, then BFS-bridges any isolated walkable region: water gaps → `BRIDGE`, tree gaps → `GRASS`. Buildings are never destroyed (BUILDING_WALL tiles are skipped by the BFS). This guarantees every building, item spawn, and land section is reachable.
 
 ### Tile rendering
+
 `TileMap.render()` bakes all tiles into 50×50-tile canvas chunks, then creates a Pixi `Sprite` per chunk. This runs once at load time (async, yielding each chunk so the loading bar stays responsive).
 
 ## Constants to Know
 
 `src/game/constants.ts` is the single source of truth for tuning:
 
-| Constant | Default | Effect |
-|---|---|---|
-| `TILE_SIZE` | 32 | Pixels per tile |
-| `MAP_WIDTH / MAP_HEIGHT` | 200 / 200 | Map size in tiles |
-| `TORCH_RADIUS` | 200 | Lit radius (px) when torch on |
-| `AMBIENT_LIGHT_RADIUS` | 60 | Lit radius (px) when torch off |
-| `DARKNESS_ALPHA` | 0.82 | Opacity of the darkness overlay |
-| `PLAYER_SPEED` | 3 | Pixels per frame |
-| `ENEMY_CHASE_SPEED` | 2.5 | Pixels per frame |
+| Constant                 | Default   | Effect                          |
+| ------------------------ | --------- | ------------------------------- |
+| `TILE_SIZE`              | 32        | Pixels per tile                 |
+| `MAP_WIDTH / MAP_HEIGHT` | 200 / 200 | Map size in tiles               |
+| `TORCH_RADIUS`           | 200       | Lit radius (px) when torch on   |
+| `AMBIENT_LIGHT_RADIUS`   | 60        | Lit radius (px) when torch off  |
+| `DARKNESS_ALPHA`         | 0.82      | Opacity of the darkness overlay |
+| `PLAYER_SPEED`           | 3         | Pixels per frame                |
+| `ENEMY_CHASE_SPEED`      | 2.5       | Pixels per frame                |
 
 ## Walkable Tiles
 

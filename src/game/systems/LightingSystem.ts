@@ -36,7 +36,7 @@ export class LightingSystem {
     if (!ctx) throw new Error('Could not get 2d canvas context');
     this.ctx = ctx;
     this.source = new ImageSource({ resource: this.canvas });
-    const texture = new Texture({ source: this.source });
+    const texture = new Texture({ source: this.source, dynamic: true });
     this.sprite = new Sprite(texture);
     this.glowLayer = new Container();
     this.glowGraphics = new Graphics();
