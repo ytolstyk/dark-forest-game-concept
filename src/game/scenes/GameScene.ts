@@ -277,6 +277,7 @@ export class GameScene {
         if (dx * dx + dy * dy < CrowFlock.SCATTER_RADIUS * CrowFlock.SCATTER_RADIUS) {
           flock.scatter();
           this.audio.playCrowScatter();
+          this.audio.triggerCrowFearHeartbeat();
         }
       }
       const done = flock.update(this.player.position);
@@ -429,21 +430,36 @@ export class GameScene {
   }
 
   private updateHeartRate(isMoving: boolean, closestEnemyDist: number) {
-    // Base target from movement state
-    const baseLow = isMoving ? 90 : 60;
-    const baseHigh = isMoving ? 130 : 90;
-    let target = baseLow + Math.random() * (baseHigh - baseLow);
-
     // Enemy proximity bonus — scales from 0 at 600 px to full at 80 px
     const ENEMY_MAX_DIST = 600;
     const ENEMY_MIN_DIST = 80;
-    if (closestEnemyDist < ENEMY_MAX_DIST) {
-      const t = 1 - Math.min(1, Math.max(0, (closestEnemyDist - ENEMY_MIN_DIST) / (ENEMY_MAX_DIST - ENEMY_MIN_DIST)));
-      target = target + t * (185 - target);
+    const enemyThreat = closestEnemyDist < ENEMY_MAX_DIST
+      ? 1 - Math.min(1, Math.max(0, (closestEnemyDist - ENEMY_MIN_DIST) / (ENEMY_MAX_DIST - ENEMY_MIN_DIST)))
+      : 0;
+
+    const underThreat = isMoving || enemyThreat > 0;
+
+    // Base target from movement state
+    let target: number;
+    if (isMoving) {
+      // Running: 90–130 bpm with noise
+      target = 90 + Math.random() * 40;
+    } else {
+      // At rest: narrow band around 65 to avoid wild oscillation.
+      // Slowly drift up toward a slightly elevated level so HR doesn't
+      // snap to resting while still cooling down from recent activity.
+      target = 63 + Math.random() * 5; // 63–68 bpm
     }
 
-    // Max drift per second: 15 bpm
-    const maxDelta = 15;
+    // Boost toward max when enemies are near
+    if (enemyThreat > 0) {
+      target = target + enemyThreat * (185 - target);
+    }
+
+    // Max drift per second — randomised when cooling down so the descent
+    // feels organic rather than a steady 15 bpm/s slope.
+    const coolingDown = !underThreat && this.heartRate > 75;
+    const maxDelta = coolingDown ? 6 + Math.random() * 14 : 15; // 6–20 bpm/s while cooling
     const delta = Math.max(-maxDelta, Math.min(maxDelta, target - this.heartRate));
     this.heartRate = Math.round(Math.max(60, Math.min(185, this.heartRate + delta)));
 

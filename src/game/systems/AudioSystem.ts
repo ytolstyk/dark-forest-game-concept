@@ -33,6 +33,9 @@ export class AudioSystem {
   // Footstep
   private footstepCounter = 0;
 
+  // Crow-fear heartbeat
+  private heartbeatGain: GainNode | null = null;
+  private heartbeatScheduled = false;
 
   private initialized = false;
 
@@ -392,61 +395,132 @@ export class AudioSystem {
     this.regularChaseDistGain = null;
   }
 
+  triggerCrowFearHeartbeat() {
+    if (!this.ctx || !this.masterGain) return;
+    if (this.heartbeatScheduled) return;
+    this.heartbeatScheduled = true;
+
+    const ctx = this.ctx;
+    const masterGain = this.masterGain;
+
+    // Envelope gain for the whole heartbeat sequence — fades out over ~5 s
+    this.heartbeatGain = ctx.createGain();
+    this.heartbeatGain.gain.setValueAtTime(1.0, ctx.currentTime);
+    this.heartbeatGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 5.5);
+    this.heartbeatGain.connect(masterGain);
+    const hGain = this.heartbeatGain;
+
+    const playThump = (t: number, freq: number, gainPeak: number) => {
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, t);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.5, t + 0.12);
+
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0, t);
+      env.gain.linearRampToValueAtTime(gainPeak, t + 0.012);
+      env.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+
+      osc.connect(env);
+      env.connect(hGain);
+      osc.start(t);
+      osc.stop(t + 0.2);
+    };
+
+    // Scared heartbeat: start ~95 BPM (0.63 s/beat), slow to ~65 BPM over 5 beats
+    const beatIntervals = [0.63, 0.68, 0.74, 0.82, 0.92];
+    let cursor = ctx.currentTime + 0.05;
+    for (const interval of beatIntervals) {
+      // lub (stronger)
+      playThump(cursor, 72, 0.9);
+      // dub (softer, 0.22 s after lub)
+      playThump(cursor + 0.22, 60, 0.55);
+      cursor += interval;
+    }
+
+    // Allow re-triggering once the sequence is done
+    const totalDuration = beatIntervals.reduce((a, b) => a + b, 0) * 1000 + 400;
+    setTimeout(() => {
+      this.heartbeatScheduled = false;
+      this.heartbeatGain = null;
+    }, totalDuration);
+  }
+
   playCrowScatter() {
     if (!this.ctx || !this.masterGain) return;
     const now = this.ctx.currentTime;
 
-    // 2–3 quick "caw" bursts
-    const burstCount = 2 + Math.floor(Math.random() * 2);
-    for (let b = 0; b < burstCount; b++) {
-      const t = now + b * 0.18;
+    const playCrowTrack = (startDelay: number, burstCount: number, cadence: number, duration: number, pitchBase: number, pitchEnd: number) => {
+      for (let b = 0; b < burstCount; b++) {
+        const t = now + startDelay + b * cadence;
 
-      // Noise layer for raspy crow texture
-      const bufSize = Math.floor(this.ctx.sampleRate * 0.12);
-      const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
-      const data = buf.getChannelData(0);
-      for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+        // Noise layer for raspy crow texture
+        const bufSize = Math.floor(this.ctx!.sampleRate * duration);
+        const buf = this.ctx!.createBuffer(1, bufSize, this.ctx!.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
 
-      const noiseSrc = this.ctx.createBufferSource();
-      noiseSrc.buffer = buf;
+        const noiseSrc = this.ctx!.createBufferSource();
+        noiseSrc.buffer = buf;
 
-      const noiseFilter = this.ctx.createBiquadFilter();
-      noiseFilter.type = 'bandpass';
-      noiseFilter.frequency.value = 1400;
-      noiseFilter.Q.value = 6;
+        const noiseFilter = this.ctx!.createBiquadFilter();
+        noiseFilter.type = 'bandpass';
+        noiseFilter.frequency.value = 1400;
+        noiseFilter.Q.value = 6;
 
-      const noiseGain = this.ctx.createGain();
-      noiseGain.gain.setValueAtTime(0, t);
-      noiseGain.gain.linearRampToValueAtTime(0.45, t + 0.015);
-      noiseGain.gain.linearRampToValueAtTime(0, t + 0.12);
+        const noiseGain = this.ctx!.createGain();
+        noiseGain.gain.setValueAtTime(0, t);
+        noiseGain.gain.linearRampToValueAtTime(0.45, t + 0.015);
+        noiseGain.gain.linearRampToValueAtTime(0, t + duration);
 
-      noiseSrc.connect(noiseFilter);
-      noiseFilter.connect(noiseGain);
-      noiseGain.connect(this.masterGain);
-      noiseSrc.start(t);
+        noiseSrc.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
+        noiseGain.connect(this.masterGain!);
+        noiseSrc.start(t);
 
-      // Sawtooth oscillator for pitch/croak
-      const osc = this.ctx.createOscillator();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(360 + Math.random() * 80, t);
-      osc.frequency.linearRampToValueAtTime(240, t + 0.12);
+        // Sawtooth oscillator for pitch/croak
+        const osc = this.ctx!.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(pitchBase + Math.random() * 80, t);
+        osc.frequency.linearRampToValueAtTime(pitchEnd, t + duration);
 
-      const oscFilter = this.ctx.createBiquadFilter();
-      oscFilter.type = 'bandpass';
-      oscFilter.frequency.value = 900;
-      oscFilter.Q.value = 3;
+        const oscFilter = this.ctx!.createBiquadFilter();
+        oscFilter.type = 'bandpass';
+        oscFilter.frequency.value = 900;
+        oscFilter.Q.value = 3;
 
-      const oscGain = this.ctx.createGain();
-      oscGain.gain.setValueAtTime(0, t);
-      oscGain.gain.linearRampToValueAtTime(0.3, t + 0.015);
-      oscGain.gain.linearRampToValueAtTime(0, t + 0.12);
+        const oscGain = this.ctx!.createGain();
+        oscGain.gain.setValueAtTime(0, t);
+        oscGain.gain.linearRampToValueAtTime(0.3, t + 0.015);
+        oscGain.gain.linearRampToValueAtTime(0, t + duration);
 
-      osc.connect(oscFilter);
-      oscFilter.connect(oscGain);
-      oscGain.connect(this.masterGain);
-      osc.start(t);
-      osc.stop(t + 0.14);
-    }
+        osc.connect(oscFilter);
+        oscFilter.connect(oscGain);
+        oscGain.connect(this.masterGain!);
+        osc.start(t);
+        osc.stop(t + duration + 0.02);
+      }
+    };
+
+    // First crow: 2–3 bursts, standard cadence
+    playCrowTrack(
+      0,
+      2 + Math.floor(Math.random() * 2),
+      0.15 + Math.random() * 0.08,
+      0.10 + Math.random() * 0.05,
+      340 + Math.random() * 60,
+      220 + Math.random() * 40,
+    );
+
+    // Second crow: different delay, burst count, cadence, duration, and pitch
+    playCrowTrack(
+      0.08 + Math.random() * 0.18,
+      2 + Math.floor(Math.random() * 3),
+      0.13 + Math.random() * 0.12,
+      0.08 + Math.random() * 0.07,
+      300 + Math.random() * 120,
+      200 + Math.random() * 60,
+    );
   }
 
   playPickup() {
