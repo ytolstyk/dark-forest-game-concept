@@ -9,7 +9,6 @@ import {
   ENEMY_SEARCH_SPEED,
   ENEMY_SEARCH_DURATION,
   LESHEN_SPEED,
-  LESHEN_PATH_INTERVAL,
   LESHEN_PATROL_RADIUS,
   TILE_SIZE,
   MAP_WIDTH,
@@ -129,12 +128,14 @@ export class EnemyAISystem {
 
     // Permanently chasing — use A* to navigate around obstacles
     enemy.state = EnemyState.CHASE;
-    enemy.pathUpdateTimer--;
 
-    if (enemy.pathUpdateTimer <= 0 || !enemy.path || enemy.path.length === 0) {
-      enemy.pathUpdateTimer = LESHEN_PATH_INTERVAL;
+    const playerMovedFar =
+      !enemy.pathTarget || distance(playerPos, enemy.pathTarget) > TILE_SIZE * 2;
+
+    if (!enemy.path || enemy.path.length === 0 || playerMovedFar) {
       const found = this.pathfinding.findPath(enemy.position, playerPos);
       enemy.path = found ?? null;
+      enemy.pathTarget = { ...playerPos };
     }
 
     if (enemy.path && enemy.path.length > 0) {

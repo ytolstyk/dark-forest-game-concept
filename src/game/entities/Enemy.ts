@@ -17,6 +17,7 @@ export class Enemy {
   // Leshen-specific: once it locks on it never lets go
   hasDetectedPlayer = false;
   pathUpdateTimer = 0;
+  pathTarget: Vector2 | null = null;
 
   private body: Graphics;
   private leftEye: Graphics;
