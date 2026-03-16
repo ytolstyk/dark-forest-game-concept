@@ -2,29 +2,50 @@ import { EnemyState } from '../types';
 import type { Vector2 } from '../types';
 import {
   TORCH_RADIUS,
+  LURKER_HEAR_RADIUS,
   ENEMY_PATROL_SPEED,
   ENEMY_CHASE_SPEED,
+  LURKER_CHASE_SPEED,
   ENEMY_SEARCH_SPEED,
   ENEMY_SEARCH_DURATION,
+  LESHEN_SPEED,
+  LESHEN_PATH_INTERVAL,
   TILE_SIZE,
   MAP_WIDTH,
   MAP_HEIGHT,
 } from '../constants';
+import { EnemyType } from '../types';
 import { distance, normalize, sub, randomInt } from '../utils/math';
 import { PathfindingSystem } from './PathfindingSystem';
 import { CollisionSystem } from './CollisionSystem';
 import type { Enemy } from '../entities/Enemy';
 
 export class EnemyAISystem {
+  private pathfinding: PathfindingSystem;
   private collision: CollisionSystem;
 
-  constructor(_pathfinding: PathfindingSystem, collision: CollisionSystem) {
+  constructor(pathfinding: PathfindingSystem, collision: CollisionSystem) {
+    this.pathfinding = pathfinding;
     this.collision = collision;
   }
 
   update(enemy: Enemy, playerPos: Vector2, torchOn: boolean) {
+    // Leshen has its own FSM — handle separately
+    if (enemy.type === EnemyType.LESHEN) {
+      this.updateLeshen(enemy, playerPos, torchOn);
+      return;
+    }
+
     const dist = distance(enemy.position, playerPos);
-    const canSeePlayer = torchOn && dist < TORCH_RADIUS;
+
+    // Watchers see the player when the torch is on; lurkers hear within half the torch radius
+    const canDetectPlayer =
+      enemy.type === EnemyType.LURKER
+        ? dist < LURKER_HEAR_RADIUS
+        : torchOn && dist < TORCH_RADIUS;
+
+    // Local alias so the rest of the switch is unchanged
+    const canSeePlayer = canDetectPlayer;
 
     switch (enemy.state) {
       case EnemyState.PATROL:
@@ -37,16 +58,18 @@ export class EnemyAISystem {
         }
         break;
 
-      case EnemyState.CHASE:
+      case EnemyState.CHASE: {
+        const chaseSpeed = enemy.type === EnemyType.LURKER ? LURKER_CHASE_SPEED : ENEMY_CHASE_SPEED;
         if (canSeePlayer) {
           enemy.lastKnownPlayerPos = { ...playerPos };
-          this.moveToward(enemy, playerPos, ENEMY_CHASE_SPEED);
+          this.moveToward(enemy, playerPos, chaseSpeed);
         } else {
           enemy.state = EnemyState.SEARCH;
           enemy.searchTimer = ENEMY_SEARCH_DURATION;
           enemy.path = null;
         }
         break;
+      }
 
       case EnemyState.SEARCH:
         enemy.searchTimer--;
@@ -81,6 +104,48 @@ export class EnemyAISystem {
           }
         }
         break;
+    }
+  }
+
+  private updateLeshen(enemy: Enemy, playerPos: Vector2, torchOn: boolean) {
+    const dist = distance(enemy.position, playerPos);
+
+    // Detection: torch visible OR within hearing range
+    const canDetect = (torchOn && dist < TORCH_RADIUS) || dist < LURKER_HEAR_RADIUS;
+
+    if (canDetect && !enemy.hasDetectedPlayer) {
+      enemy.hasDetectedPlayer = true;
+      enemy.state = EnemyState.CHASE;
+      enemy.path = null;
+      enemy.pathUpdateTimer = 0;
+    }
+
+    if (!enemy.hasDetectedPlayer) {
+      // Still patrolling — normal wander behaviour
+      this.patrol(enemy);
+      return;
+    }
+
+    // Permanently chasing — use A* to navigate around obstacles
+    enemy.state = EnemyState.CHASE;
+    enemy.pathUpdateTimer--;
+
+    if (enemy.pathUpdateTimer <= 0 || !enemy.path || enemy.path.length === 0) {
+      enemy.pathUpdateTimer = LESHEN_PATH_INTERVAL;
+      const found = this.pathfinding.findPath(enemy.position, playerPos);
+      enemy.path = found ?? null;
+    }
+
+    if (enemy.path && enemy.path.length > 0) {
+      const next = enemy.path[0];
+      if (distance(enemy.position, next) < LESHEN_SPEED + 4) {
+        enemy.path.shift();
+      } else {
+        this.moveToward(enemy, next, LESHEN_SPEED);
+      }
+    } else {
+      // Fallback: direct movement if no path found
+      this.moveToward(enemy, playerPos, LESHEN_SPEED);
     }
   }
 

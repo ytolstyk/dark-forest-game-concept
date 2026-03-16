@@ -1,6 +1,6 @@
 import { Application, Container } from 'pixi.js';
-import { GameState, EnemyState, CollectibleType, TileType } from '../types';
-import { MAX_HEAR_DISTANCE } from '../constants';
+import { GameState, EnemyState, EnemyType, CollectibleType, TileType } from '../types';
+import { MAX_HEAR_DISTANCE, LESHEN_GLOW_COLOR, LESHEN_GLOW_RADIUS } from '../constants';
 import { distance } from '../utils/math';
 import { generateMap } from '../map/MapGenerator';
 import { TileMap } from '../map/TileMap';
@@ -39,6 +39,7 @@ export class GameScene {
   private particles: ParticleEffects;
 
   private anyEnemyChasing = false;
+  private leshenChasing = false;
   private gameOver = false;
 
   // Expose state for React HUD
@@ -82,12 +83,21 @@ export class GameScene {
     // Create player
     this.player = new Player(mapData.playerSpawn.x, mapData.playerSpawn.y);
 
-    // Create enemies
+    // Create enemies — ~40% lurkers, ~60% watchers
     this.enemies = [];
     for (const spawn of mapData.enemySpawns) {
       const enemyScale = 1 + Math.random(); // 1.0 – 2.0
-      this.enemies.push(new Enemy(spawn.x, spawn.y, enemyScale));
+      const type = Math.random() < 0.4 ? EnemyType.LURKER : EnemyType.WATCHER;
+      this.enemies.push(new Enemy(spawn.x, spawn.y, enemyScale, type));
     }
+
+    // Exactly one Leshen — pick a spawn far from the player
+    const leshenSpawn = mapData.enemySpawns.reduce((best, s) => {
+      const d = Math.hypot(s.x - mapData.playerSpawn.x, s.y - mapData.playerSpawn.y);
+      const bd = Math.hypot(best.x - mapData.playerSpawn.x, best.y - mapData.playerSpawn.y);
+      return d > bd ? s : best;
+    }, mapData.enemySpawns[0]);
+    this.enemies.push(new Enemy(leshenSpawn.x, leshenSpawn.y, 1.4, EnemyType.LESHEN));
 
     // Create collectibles
     this.collectibles = [
@@ -175,6 +185,17 @@ export class GameScene {
     }
     this.anyEnemyChasing = anyChasing;
 
+    // Leshen growl — plays whenever the Leshen has locked on
+    const leshenNowChasing = this.enemies.some(
+      (e) => e.type === EnemyType.LESHEN && e.hasDetectedPlayer
+    );
+    if (leshenNowChasing && !this.leshenChasing) {
+      this.audio.startLeshenGrowl();
+    } else if (!leshenNowChasing && this.leshenChasing) {
+      this.audio.stopLeshenGrowl();
+    }
+    this.leshenChasing = leshenNowChasing;
+
     // 7. Collectible interactions
     for (const c of this.collectibles) {
       if (c.collected) continue;
@@ -213,10 +234,30 @@ export class GameScene {
     // 11. Lighting
     const enemyGlows: { position: { x: number; y: number }; color: number; radius: number; alpha: number }[] = [];
     for (const enemy of this.enemies) {
-      const [left, right] = enemy.getEyeWorldPositions();
-      const glowAlpha = enemy.state === EnemyState.CHASE ? 0.9 : 0.6;
-      enemyGlows.push({ position: left, color: 0xaaff44, radius: 3, alpha: glowAlpha });
-      enemyGlows.push({ position: right, color: 0xaaff44, radius: 3, alpha: glowAlpha });
+      if (enemy.type === EnemyType.WATCHER) {
+        // Watchers always have green glowing eyes
+        const [left, right] = enemy.getEyeWorldPositions();
+        const glowAlpha = enemy.state === EnemyState.CHASE ? 0.9 : 0.6;
+        enemyGlows.push({ position: left, color: 0xaaff44, radius: 3, alpha: glowAlpha });
+        enemyGlows.push({ position: right, color: 0xaaff44, radius: 3, alpha: glowAlpha });
+      } else if (enemy.type === EnemyType.LURKER && enemy.state === EnemyState.CHASE) {
+        // Lurkers only glow yellow when actively chasing
+        const [left, right] = enemy.getEyeWorldPositions();
+        enemyGlows.push({ position: left, color: 0xffff00, radius: 3, alpha: 0.9 });
+        enemyGlows.push({ position: right, color: 0xffff00, radius: 3, alpha: 0.9 });
+      } else if (enemy.type === EnemyType.LESHEN) {
+        // Leshen: faint body aura always present, intensifies once locked on
+        const bodyAlpha = enemy.hasDetectedPlayer ? 0.22 : 0.08;
+        const bodyRadius = enemy.hasDetectedPlayer
+          ? LESHEN_GLOW_RADIUS
+          : LESHEN_GLOW_RADIUS * 0.6;
+        enemyGlows.push({ position: enemy.position, color: LESHEN_GLOW_COLOR, radius: bodyRadius, alpha: bodyAlpha });
+        // Red eye glow
+        const [left, right] = enemy.getEyeWorldPositions();
+        const eyeAlpha = enemy.hasDetectedPlayer ? 0.85 : 0.4;
+        enemyGlows.push({ position: left, color: 0xff3322, radius: 4, alpha: eyeAlpha });
+        enemyGlows.push({ position: right, color: 0xff3322, radius: 4, alpha: eyeAlpha });
+      }
     }
 
     const itemGlows: { position: { x: number; y: number }; color: number; radius: number; alpha: number }[] = [];
@@ -252,6 +293,7 @@ export class GameScene {
   private handleDeath() {
     this.gameOver = true;
     this.audio.stopChaseMusic();
+    this.audio.stopLeshenGrowl();
     this.audio.playDeath();
     this.onStateChange(GameState.GAME_OVER);
   }
@@ -259,6 +301,7 @@ export class GameScene {
   private handleWin() {
     this.gameOver = true;
     this.audio.stopChaseMusic();
+    this.audio.stopLeshenGrowl();
     this.audio.playWin();
     this.onStateChange(GameState.WIN);
   }

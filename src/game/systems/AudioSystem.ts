@@ -16,6 +16,12 @@ export class AudioSystem {
   private torchNoiseSource: AudioBufferSourceNode | null = null;
   private torchGain: GainNode | null = null;
 
+  // Leshen growl
+  private leshenGrowlOsc: OscillatorNode | null = null;
+  private leshenGrowlLfo: OscillatorNode | null = null;
+  private leshenGrowlGain: GainNode | null = null;
+  private leshenGrowlActive = false;
+
   // Footstep
   private footstepCounter = 0;
 
@@ -145,6 +151,48 @@ export class AudioSystem {
     }
   }
 
+  startLeshenGrowl() {
+    if (!this.ctx || !this.masterGain || this.leshenGrowlActive) return;
+    this.leshenGrowlActive = true;
+
+    this.leshenGrowlGain = this.ctx.createGain();
+    this.leshenGrowlGain.gain.value = 0.08;
+
+    // Deep sub-bass growl
+    this.leshenGrowlOsc = this.ctx.createOscillator();
+    this.leshenGrowlOsc.type = 'sawtooth';
+    this.leshenGrowlOsc.frequency.value = 48;
+
+    // Slow LFO to make it pulse and breathe
+    this.leshenGrowlLfo = this.ctx.createOscillator();
+    this.leshenGrowlLfo.frequency.value = 2.5;
+    const lfoGain = this.ctx.createGain();
+    lfoGain.gain.value = 10;
+    this.leshenGrowlLfo.connect(lfoGain);
+    lfoGain.connect(this.leshenGrowlOsc.frequency);
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 180;
+
+    this.leshenGrowlOsc.connect(filter);
+    filter.connect(this.leshenGrowlGain);
+    this.leshenGrowlGain.connect(this.masterGain);
+
+    this.leshenGrowlLfo.start();
+    this.leshenGrowlOsc.start();
+  }
+
+  stopLeshenGrowl() {
+    if (!this.leshenGrowlActive) return;
+    this.leshenGrowlActive = false;
+    this.leshenGrowlLfo?.stop();
+    this.leshenGrowlOsc?.stop();
+    this.leshenGrowlLfo = null;
+    this.leshenGrowlOsc = null;
+    this.leshenGrowlGain = null;
+  }
+
   startChaseMusic() {
     if (!this.ctx || !this.masterGain || this.chaseActive) return;
     this.chaseActive = true;
@@ -240,6 +288,7 @@ export class AudioSystem {
 
   destroy() {
     this.stopChaseMusic();
+    this.stopLeshenGrowl();
     this.torchNoiseSource?.stop();
     this.ambientSource?.stop();
     this.ctx?.close();

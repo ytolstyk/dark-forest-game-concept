@@ -35,6 +35,13 @@ export const TileType = {
 } as const;
 export type TileType = (typeof TileType)[keyof typeof TileType];
 
+export const EnemyType = {
+  WATCHER: 'watcher', // glowing green eyes, detects via torch light
+  LURKER: 'lurker',   // no eyes; yellow eyes appear when chasing; detects via hearing
+  LESHEN: 'leshen',   // ancient forest spirit; once it detects the player it never stops chasing
+} as const;
+export type EnemyType = (typeof EnemyType)[keyof typeof EnemyType];
+
 export const CollectibleType = {
   CAR: 'car',
   KEYS: 'keys',
