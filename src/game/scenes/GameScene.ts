@@ -42,7 +42,7 @@ export class GameScene {
   private footstepCount = 0;
   private readonly FOOTSTEP_MAX_COUNT = 400;
 
-  private anyEnemyChasing = false;
+  private anyRegularChasing = false;
   private leshenChasing = false;
   private gameOver = false;
 
@@ -183,7 +183,7 @@ export class GameScene {
     }
 
     // 5. Enemy AI
-    let anyChasing = false;
+    let regularChasing = false;
     let closestEnemyDist = Infinity;
 
     for (const enemy of this.enemies) {
@@ -193,7 +193,9 @@ export class GameScene {
       const dist = distance(enemy.position, this.player.position);
       if (dist < closestEnemyDist) closestEnemyDist = dist;
 
-      if (enemy.state === EnemyState.CHASE) anyChasing = true;
+      if (enemy.state === EnemyState.CHASE && enemy.type !== EnemyType.LESHEN) {
+        regularChasing = true;
+      }
 
       // 6. Enemy-player collision (death)
       if (this.collision.circleCollision(enemy.position, 12, this.player.position, 8)) {
@@ -202,27 +204,29 @@ export class GameScene {
       }
     }
 
-    // Chase music
-    if (anyChasing && !this.anyEnemyChasing) {
-      this.audio.startChaseMusic();
-    } else if (!anyChasing && this.anyEnemyChasing) {
-      this.audio.stopChaseMusic();
+    // Regular enemy chase sound
+    if (regularChasing && !this.anyRegularChasing) {
+      this.audio.startRegularChaseSound();
+    } else if (!regularChasing && this.anyRegularChasing) {
+      this.audio.stopRegularChaseSound();
     }
-    this.anyEnemyChasing = anyChasing;
+    this.anyRegularChasing = regularChasing;
 
-    // Leshen growl — plays whenever the Leshen has locked on
+    // Leshen growl + chase music — plays whenever the Leshen has locked on
     const leshen = this.enemies.find((e) => e.type === EnemyType.LESHEN);
     const leshenNowChasing = !!leshen?.hasDetectedPlayer;
     if (leshenNowChasing && !this.leshenChasing) {
       this.audio.playLeshenDetectGrowl();
       this.audio.startLeshenGrowl();
+      this.audio.startChaseMusic();
     } else if (!leshenNowChasing && this.leshenChasing) {
       this.audio.stopLeshenGrowl();
+      this.audio.stopChaseMusic();
     }
     this.leshenChasing = leshenNowChasing;
 
-    // Drive chase music volume by distance to leshen
-    if (leshen && this.anyEnemyChasing) {
+    // Drive Leshen chase music volume by distance to Leshen
+    if (leshenNowChasing && leshen) {
       this.audio.updateLeshenChaseVolume(distance(leshen.position, this.player.position));
     }
 

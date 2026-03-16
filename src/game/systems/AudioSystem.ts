@@ -6,12 +6,19 @@ export class AudioSystem {
   private ambientSource: AudioBufferSourceNode | null = null;
   private ambientGain: GainNode | null = null;
 
-  // Chase
+  // Leshen chase
   private chaseOsc: OscillatorNode | null = null;
   private chasePulseOsc: OscillatorNode | null = null;
   private chaseGain: GainNode | null = null;
   private chaseDistGain: GainNode | null = null;
   private chaseActive = false;
+
+  // Regular enemy chase
+  private regularChaseOsc: OscillatorNode | null = null;
+  private regularChasePulseOsc: OscillatorNode | null = null;
+  private regularChaseGain: GainNode | null = null;
+  private regularChaseDistGain: GainNode | null = null;
+  private regularChaseActive = false;
 
   // Torch
   private torchNoiseSource: AudioBufferSourceNode | null = null;
@@ -32,7 +39,7 @@ export class AudioSystem {
     if (this.initialized) return;
     this.ctx = new AudioContext();
     this.masterGain = this.ctx.createGain();
-    this.masterGain.gain.value = 0.3;
+    this.masterGain.gain.value = 0.6;
     this.masterGain.connect(this.ctx.destination);
     this.initialized = true;
 
@@ -315,6 +322,75 @@ export class AudioSystem {
     this.chaseDistGain = null;
   }
 
+  startRegularChaseSound() {
+    if (!this.ctx || !this.masterGain || this.regularChaseActive) return;
+    this.regularChaseActive = true;
+
+    this.regularChaseDistGain = this.ctx.createGain();
+    this.regularChaseDistGain.gain.value = 1;
+
+    this.regularChaseGain = this.ctx.createGain();
+    this.regularChaseGain.gain.value = 0.14;
+
+    // Mid-range square wave — harsher, higher than the Leshen's deep sawtooth
+    this.regularChaseOsc = this.ctx.createOscillator();
+    this.regularChaseOsc.type = 'square';
+    this.regularChaseOsc.frequency.value = 160;
+
+    // Faster pulse LFO (4.5 Hz) — frantic vs Leshen's slow 1.8 Hz throb
+    this.regularChasePulseOsc = this.ctx.createOscillator();
+    this.regularChasePulseOsc.type = 'sine';
+    this.regularChasePulseOsc.frequency.value = 4.5;
+
+    const lfoGain = this.ctx.createGain();
+    lfoGain.gain.value = 0.5;
+
+    const lfoOffset = this.ctx.createConstantSource();
+    lfoOffset.offset.value = 0.5;
+
+    const pulseGain = this.ctx.createGain();
+    pulseGain.gain.value = 0;
+    lfoOffset.connect(pulseGain.gain);
+    this.regularChasePulseOsc.connect(lfoGain);
+    lfoGain.connect(pulseGain.gain);
+
+    // Bandpass centred around 350 Hz — cuts lows so it sounds distinct from Leshen
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 350;
+    filter.Q.value = 2.5;
+
+    this.regularChaseOsc.connect(filter);
+    filter.connect(pulseGain);
+    pulseGain.connect(this.regularChaseGain);
+    this.regularChaseGain.connect(this.regularChaseDistGain);
+    this.regularChaseDistGain.connect(this.masterGain);
+
+    lfoOffset.start();
+    this.regularChasePulseOsc.start();
+    this.regularChaseOsc.start();
+  }
+
+  updateRegularChaseVolume(dist: number) {
+    if (!this.regularChaseDistGain || !this.ctx) return;
+    const MAX_DIST = 500;
+    const MIN_DIST = 60;
+    const t = 1 - Math.min(1, Math.max(0, (dist - MIN_DIST) / (MAX_DIST - MIN_DIST)));
+    this.regularChaseDistGain.gain.setTargetAtTime(t, this.ctx.currentTime, 0.15);
+  }
+
+  stopRegularChaseSound() {
+    if (!this.regularChaseActive) return;
+    this.regularChaseActive = false;
+
+    this.regularChaseOsc?.stop();
+    this.regularChasePulseOsc?.stop();
+    this.regularChaseOsc = null;
+    this.regularChasePulseOsc = null;
+    this.regularChaseGain = null;
+    this.regularChaseDistGain = null;
+  }
+
   playPickup() {
     if (!this.ctx || !this.masterGain) return;
     const osc = this.ctx.createOscillator();
@@ -371,6 +447,7 @@ export class AudioSystem {
 
   stopAll() {
     this.stopChaseMusic();
+    this.stopRegularChaseSound();
     this.stopLeshenGrowl();
     if (this.torchNoiseSource) {
       this.torchNoiseSource.stop();
