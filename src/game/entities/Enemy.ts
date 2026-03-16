@@ -18,6 +18,9 @@ export class Enemy {
   hasDetectedPlayer = false;
   pathUpdateTimer = 0;
   pathTarget: Vector2 | null = null;
+  // Stuck detection for patrol wander
+  stuckTimer = 0;
+  lastStuckCheckPos: Vector2 | null = null;
 
   private body: Graphics;
   private leftEye: Graphics;

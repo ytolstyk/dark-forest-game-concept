@@ -161,8 +161,25 @@ export class EnemyAISystem {
   }
 
   private wanderAround(enemy: Enemy, center: Vector2, radius: number, speed: number) {
-    if (!enemy.patrolTarget || distance(enemy.position, enemy.patrolTarget) < 20) {
-      enemy.patrolTarget = this.randomWalkableNear(center, radius);
+    const needsNewTarget = !enemy.patrolTarget || distance(enemy.position, enemy.patrolTarget) < 20;
+
+    // Stuck detection: every 90 frames check if we've moved at least 8px
+    enemy.stuckTimer++;
+    if (enemy.stuckTimer >= 90) {
+      enemy.stuckTimer = 0;
+      const prev = enemy.lastStuckCheckPos;
+      if (prev && distance(enemy.position, prev) < 8) {
+        // Stuck — force a new waypoint
+        enemy.patrolTarget = null;
+      }
+      enemy.lastStuckCheckPos = { ...enemy.position };
+    }
+
+    if (needsNewTarget || !enemy.patrolTarget) {
+      // Try the full radius first, fall back to a small area near current position
+      enemy.patrolTarget =
+        this.randomWalkableNear(center, radius) ??
+        this.randomWalkableNear(enemy.position, TILE_SIZE * 6);
     }
     if (enemy.patrolTarget) {
       this.moveToward(enemy, enemy.patrolTarget, speed);
@@ -189,15 +206,20 @@ export class EnemyAISystem {
   }
 
   private randomWalkableNear(center: Vector2, radius: number): Vector2 | null {
-    for (let attempts = 0; attempts < 20; attempts++) {
+    const EDGE_MARGIN = 5; // tiles to keep away from map edge
+    for (let attempts = 0; attempts < 50; attempts++) {
       const x = center.x + randomInt(-radius, radius);
       const y = center.y + randomInt(-radius, radius);
       const tileX = Math.floor(x / TILE_SIZE);
       const tileY = Math.floor(y / TILE_SIZE);
-      if (tileX >= 0 && tileX < MAP_WIDTH && tileY >= 0 && tileY < MAP_HEIGHT) {
-        if (this.collision.isTileWalkable(tileX, tileY)) {
-          return { x, y };
-        }
+      if (
+        tileX >= EDGE_MARGIN &&
+        tileX < MAP_WIDTH - EDGE_MARGIN &&
+        tileY >= EDGE_MARGIN &&
+        tileY < MAP_HEIGHT - EDGE_MARGIN &&
+        this.collision.isTileWalkable(tileX, tileY)
+      ) {
+        return { x, y };
       }
     }
     return null;
