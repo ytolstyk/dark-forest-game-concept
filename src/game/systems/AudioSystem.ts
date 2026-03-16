@@ -33,6 +33,7 @@ export class AudioSystem {
   // Footstep
   private footstepCounter = 0;
 
+
   private initialized = false;
 
   init() {
@@ -389,6 +390,63 @@ export class AudioSystem {
     this.regularChasePulseOsc = null;
     this.regularChaseGain = null;
     this.regularChaseDistGain = null;
+  }
+
+  playCrowScatter() {
+    if (!this.ctx || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+
+    // 2–3 quick "caw" bursts
+    const burstCount = 2 + Math.floor(Math.random() * 2);
+    for (let b = 0; b < burstCount; b++) {
+      const t = now + b * 0.18;
+
+      // Noise layer for raspy crow texture
+      const bufSize = Math.floor(this.ctx.sampleRate * 0.12);
+      const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+
+      const noiseSrc = this.ctx.createBufferSource();
+      noiseSrc.buffer = buf;
+
+      const noiseFilter = this.ctx.createBiquadFilter();
+      noiseFilter.type = 'bandpass';
+      noiseFilter.frequency.value = 1400;
+      noiseFilter.Q.value = 6;
+
+      const noiseGain = this.ctx.createGain();
+      noiseGain.gain.setValueAtTime(0, t);
+      noiseGain.gain.linearRampToValueAtTime(0.45, t + 0.015);
+      noiseGain.gain.linearRampToValueAtTime(0, t + 0.12);
+
+      noiseSrc.connect(noiseFilter);
+      noiseFilter.connect(noiseGain);
+      noiseGain.connect(this.masterGain);
+      noiseSrc.start(t);
+
+      // Sawtooth oscillator for pitch/croak
+      const osc = this.ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(360 + Math.random() * 80, t);
+      osc.frequency.linearRampToValueAtTime(240, t + 0.12);
+
+      const oscFilter = this.ctx.createBiquadFilter();
+      oscFilter.type = 'bandpass';
+      oscFilter.frequency.value = 900;
+      oscFilter.Q.value = 3;
+
+      const oscGain = this.ctx.createGain();
+      oscGain.gain.setValueAtTime(0, t);
+      oscGain.gain.linearRampToValueAtTime(0.3, t + 0.015);
+      oscGain.gain.linearRampToValueAtTime(0, t + 0.12);
+
+      osc.connect(oscFilter);
+      oscFilter.connect(oscGain);
+      oscGain.connect(this.masterGain);
+      osc.start(t);
+      osc.stop(t + 0.14);
+    }
   }
 
   playPickup() {

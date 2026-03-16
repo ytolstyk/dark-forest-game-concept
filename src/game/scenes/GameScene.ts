@@ -1,12 +1,13 @@
 import { Application, Container, Graphics } from 'pixi.js';
 import { GameState, EnemyState, EnemyType, CollectibleType, TileType } from '../types';
-import { MAX_HEAR_DISTANCE, LESHEN_GLOW_COLOR, LESHEN_GLOW_RADIUS } from '../constants';
+import { MAX_HEAR_DISTANCE, LESHEN_GLOW_COLOR, LESHEN_GLOW_RADIUS, TILE_SIZE } from '../constants';
 import { distance } from '../utils/math';
 import { generateMap } from '../map/MapGenerator';
 import { TileMap } from '../map/TileMap';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
 import { Collectible } from '../entities/Collectible';
+import { CrowFlock } from '../entities/CrowFlock';
 import { InputSystem } from '../systems/InputSystem';
 import { CameraSystem } from '../systems/CameraSystem';
 import { CollisionSystem } from '../systems/CollisionSystem';
@@ -41,6 +42,8 @@ export class GameScene {
   private footstepContainer: Container;
   private footstepCount = 0;
   private readonly FOOTSTEP_MAX_COUNT = 400;
+
+  private crowFlocks: CrowFlock[] = [];
 
   private anyRegularChasing = false;
   private leshenChasing = false;
@@ -120,6 +123,9 @@ export class GameScene {
       new Collectible(mapData.fuelPosition.x, mapData.fuelPosition.y, CollectibleType.FUEL),
     ];
 
+    // Spawn crow flocks at tree tiles
+    this.spawnCrowFlocks(mapData.playerSpawn.x, mapData.playerSpawn.y);
+
     // Wire up footstep spawning
     this.player.onFootstep = (foot) => {
       this.spawnFootstep(foot);
@@ -136,6 +142,9 @@ export class GameScene {
     }
     for (const e of this.enemies) {
       this.entityContainer.addChild(e.container);
+    }
+    for (const flock of this.crowFlocks) {
+      this.entityContainer.addChild(flock.container);
     }
     this.entityContainer.addChild(this.player.container);
 
@@ -260,7 +269,26 @@ export class GameScene {
     this.player.updateVisual();
 
 
-    // 8b. Heart rate simulation (ticks once per second at ~60 fps)
+    // 8b. Crow flocks — scatter when player approaches, remove once off-screen
+    this.crowFlocks = this.crowFlocks.filter((flock) => {
+      if (flock.state === 'perched') {
+        const dx = flock.position.x - this.player.position.x;
+        const dy = flock.position.y - this.player.position.y;
+        if (dx * dx + dy * dy < CrowFlock.SCATTER_RADIUS * CrowFlock.SCATTER_RADIUS) {
+          flock.scatter();
+          this.audio.playCrowScatter();
+        }
+      }
+      const done = flock.update(this.player.position);
+      if (done) {
+        this.entityContainer.removeChild(flock.container);
+        flock.container.destroy({ children: true });
+        return false;
+      }
+      return true;
+    });
+
+    // Heart rate simulation (ticks once per second at ~60 fps)
     this.hrFrameTimer++;
     if (this.hrFrameTimer >= 60) {
       this.hrFrameTimer = 0;
@@ -333,6 +361,47 @@ export class GameScene {
     this.audio.updateFootsteps(isMoving);
     this.audio.updateEnemyGrowl(closestEnemyDist, MAX_HEAR_DISTANCE);
   };
+
+  private spawnCrowFlocks(playerSpawnX: number, playerSpawnY: number) {
+    // Collect all tree tile pixel centers that are far enough from the player
+    const candidates: { x: number; y: number }[] = [];
+    for (let ty = 0; ty < this.tiles.length; ty++) {
+      for (let tx = 0; tx < this.tiles[ty].length; tx++) {
+        const tile = this.tiles[ty][tx];
+        if (tile !== TileType.TREE && tile !== TileType.DENSE_TREE) continue;
+        const wx = tx * TILE_SIZE + TILE_SIZE / 2;
+        const wy = ty * TILE_SIZE + TILE_SIZE / 2;
+        const dx = wx - playerSpawnX;
+        const dy = wy - playerSpawnY;
+        if (dx * dx + dy * dy < 350 * 350) continue; // too close to start
+        candidates.push({ x: wx, y: wy });
+      }
+    }
+
+    // Fisher-Yates shuffle
+    for (let i = candidates.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+    }
+
+    // Greedily pick locations with minimum spacing between flocks
+    const FLOCK_COUNT = 28;
+    const MIN_SPACING_SQ = 320 * 320;
+    const placed: { x: number; y: number }[] = [];
+
+    for (const pos of candidates) {
+      if (placed.length >= FLOCK_COUNT) break;
+      const tooClose = placed.some((p) => {
+        const dx = p.x - pos.x;
+        const dy = p.y - pos.y;
+        return dx * dx + dy * dy < MIN_SPACING_SQ;
+      });
+      if (!tooClose) {
+        placed.push(pos);
+        this.crowFlocks.push(new CrowFlock(pos.x, pos.y));
+      }
+    }
+  }
 
   private spawnFootstep(foot: 'left' | 'right') {
     const side = foot === 'left' ? -1 : 1;
