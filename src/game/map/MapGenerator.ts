@@ -49,6 +49,10 @@ export function generateMap(): MapData {
   // Carve rivers
   carveRivers(tiles, noise2D);
 
+  // Clear trees/dense-trees adjacent (including diagonally) to water so the
+  // player always has a walkable shore to navigate around water bodies.
+  clearWaterShore(tiles);
+
   // Place some dirt paths
   placePaths(tiles);
 
@@ -272,6 +276,29 @@ function ensureConnectivity(
 // ---------------------------------------------------------------------------
 // Terrain generators
 // ---------------------------------------------------------------------------
+
+/**
+ * For every water tile, convert any adjacent tree tile (all 8 directions) to
+ * GRASS so the player always has a walkable shore to navigate around water.
+ */
+function clearWaterShore(tiles: TileType[][]): void {
+  const isWater = (t: TileType) => t === TileType.DEEP_WATER || t === TileType.SHALLOW_WATER;
+  const isTree  = (t: TileType) => t === TileType.TREE || t === TileType.DENSE_TREE;
+
+  for (let y = 0; y < MAP_HEIGHT; y++) {
+    for (let x = 0; x < MAP_WIDTH; x++) {
+      if (!isWater(tiles[y][x])) continue;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || nx >= MAP_WIDTH || ny < 0 || ny >= MAP_HEIGHT) continue;
+          if (isTree(tiles[ny][nx])) tiles[ny][nx] = TileType.GRASS;
+        }
+      }
+    }
+  }
+}
 
 function carveRivers(tiles: TileType[][], noise2D: (x: number, y: number) => number) {
   // Carve 1-2 winding rivers (narrower than before)
