@@ -148,6 +148,22 @@
   margin-bottom: 2px;
 }
 
+.step-counter {
+  position: absolute;
+  top: 60px;
+  left: 20px;
+  z-index: 5;
+  padding: 5px 14px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  color: #668866;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  pointer-events: none;
+  letter-spacing: 1px;
+}
+
 .game-timer {
   position: absolute;
   top: 20px;
@@ -162,6 +178,46 @@
   border-radius: 4px;
   pointer-events: none;
   letter-spacing: 2px;
+}
+
+.end-stats {
+  display: flex;
+  gap: 0;
+  align-items: stretch;
+  margin-bottom: 36px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.end-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 32px;
+  gap: 6px;
+}
+
+.end-stat-label {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.end-stat-value {
+  font-family: 'Courier New', monospace;
+  font-size: 26px;
+  color: rgba(255, 255, 255, 0.85);
+  letter-spacing: 2px;
+}
+
+.end-stat-divider {
+  width: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  align-self: stretch;
 }
 
 .end-time {

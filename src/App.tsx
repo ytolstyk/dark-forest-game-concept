@@ -16,6 +16,7 @@ function App() {
   const [loadProgress, setLoadProgress] = useState(0)
   const [torchOn, setTorchOn] = useState(false)
   const [inventory, setInventory] = useState({ keys: false, fuel: false })
+  const [totalSteps, setTotalSteps] = useState(0)
   const [elapsed, setElapsed] = useState(0)
   const startTimeRef = useRef<number>(0)
 
@@ -46,6 +47,7 @@ function App() {
       if (scene) {
         setTorchOn(scene.torchOn)
         setInventory({ ...scene.inventory })
+        setTotalSteps(scene.totalSteps)
       }
     }, 100)
     return () => clearInterval(interval)
@@ -73,6 +75,7 @@ function App() {
     setGameState(GameState.PLAYING)
     setTorchOn(false)
     setInventory({ keys: false, fuel: false })
+    setTotalSteps(0)
   }, [])
 
   return (
@@ -108,6 +111,7 @@ function App() {
       {gameState === GameState.PLAYING && (
         <>
           <div className="game-timer">{formatTime(elapsed)}</div>
+          <div className="step-counter">👣 {totalSteps}</div>
           <div className={`torch-indicator ${torchOn ? 'on' : 'off'}`}>
             {torchOn ? 'TORCH ON' : 'TORCH OFF'}
           </div>
@@ -131,7 +135,17 @@ function App() {
       {gameState === GameState.GAME_OVER && (
         <div className="overlay gameover-overlay">
           <h1 className="gameover-title">You Were Caught</h1>
-          <p className="end-time">Survived for {formatTime(elapsed)}</p>
+          <div className="end-stats">
+            <div className="end-stat">
+              <span className="end-stat-label">survived</span>
+              <span className="end-stat-value">{formatTime(elapsed)}</span>
+            </div>
+            <div className="end-stat-divider" />
+            <div className="end-stat">
+              <span className="end-stat-label">steps taken</span>
+              <span className="end-stat-value">👣 {totalSteps}</span>
+            </div>
+          </div>
           <button className="btn" onClick={startGame}>Try Again</button>
         </div>
       )}
@@ -139,7 +153,17 @@ function App() {
       {gameState === GameState.WIN && (
         <div className="overlay win-overlay">
           <h1 className="win-title">You Escaped the Forest</h1>
-          <p className="end-time">Escaped in {formatTime(elapsed)}</p>
+          <div className="end-stats">
+            <div className="end-stat">
+              <span className="end-stat-label">escaped in</span>
+              <span className="end-stat-value">{formatTime(elapsed)}</span>
+            </div>
+            <div className="end-stat-divider" />
+            <div className="end-stat">
+              <span className="end-stat-label">steps taken</span>
+              <span className="end-stat-value">👣 {totalSteps}</span>
+            </div>
+          </div>
           <button className="btn" onClick={startGame}>Play Again</button>
         </div>
       )}

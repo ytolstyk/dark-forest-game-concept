@@ -49,6 +49,7 @@ export class GameScene {
   // Expose state for React HUD
   torchOn = false;
   inventory = { keys: false, fuel: false };
+  totalSteps = 0;
 
   constructor(app: Application, onStateChange: (state: string) => void) {
     this.app = app;
@@ -112,7 +113,10 @@ export class GameScene {
     ];
 
     // Wire up footstep spawning
-    this.player.onFootstep = (foot) => this.spawnFootstep(foot);
+    this.player.onFootstep = (foot) => {
+      this.spawnFootstep(foot);
+      this.totalSteps++;
+    };
 
     // Build scene graph: map -> footsteps -> entities -> particles -> darkness -> glow
     this.worldContainer.addChild(this.tileMap.container);
