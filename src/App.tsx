@@ -81,8 +81,12 @@ function App() {
     if (gameState !== GameState.GAME_OVER && gameState !== GameState.WIN) return
     const scene = gameRef.current?.scene
     if (scene) {
-      setEndAvgHR(scene.avgHeartRate)
-      setEndMaxHR(scene.maxHeartRate)
+      const avgHR = scene.avgHeartRate
+      const maxHR = scene.maxHeartRate
+      setTimeout(() => {
+        setEndAvgHR(avgHR)
+        setEndMaxHR(maxHR)
+      }, 0)
     }
   }, [gameState])
 
@@ -90,7 +94,7 @@ function App() {
   useEffect(() => {
     if (gameState !== GameState.PLAYING) return
     startTimeRef.current = Date.now()
-    setElapsed(0)
+    setTimeout(() => setElapsed(0), 0)
     const interval = setInterval(() => {
       setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000))
     }, 1000)
