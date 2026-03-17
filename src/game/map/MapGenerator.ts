@@ -3,6 +3,7 @@ import type { Vector2 } from '../types';
 import { MAP_WIDTH, MAP_HEIGHT, TILE_SIZE } from '../constants';
 import { createNoiseGenerator } from '../utils/noise';
 import { randomInt, distance } from '../utils/math';
+import { isWalkable } from './TileTypes';
 
 export interface MapData {
   tiles: TileType[][];
@@ -69,7 +70,7 @@ export function generateMap(): MapData {
   placeBridges(tiles);
 
   // Find player spawn first — needed as the flood-fill root for connectivity.
-  const playerSpawn = findWalkablePosition(tiles, 20, 40, 20, 40);
+  const playerSpawn = findWalkablePosition(tiles, 20, 40, 20, 40, 1);
 
   // Guarantee the entire walkable surface is one connected component:
   // BFS bridges rivers and clears trees wherever isolated land exists.
@@ -638,7 +639,8 @@ function findWalkablePosition(
   minX: number,
   maxX: number,
   minY: number,
-  maxY: number
+  maxY: number,
+  clearRadius: number = 0
 ): Vector2 {
   for (let attempt = 0; attempt < 500; attempt++) {
     const tx = randomInt(minX, maxX);
@@ -653,9 +655,24 @@ function findWalkablePosition(
         tiles[ty][tx] === TileType.DIRT_PATH ||
         tiles[ty][tx] === TileType.BUILDING_FLOOR)
     ) {
+      if (clearRadius > 0 && !isClearArea(tiles, tx, ty, clearRadius)) continue;
       return { x: tx * TILE_SIZE + TILE_SIZE / 2, y: ty * TILE_SIZE + TILE_SIZE / 2 };
     }
   }
   // Fallback
   return { x: (minX + maxX) / 2 * TILE_SIZE, y: (minY + maxY) / 2 * TILE_SIZE };
+}
+
+/** Returns true if all tiles in a [tx-r .. tx+r, ty-r .. ty+r+1] box are walkable.
+ *  The extra row below (+r+1) covers the player's leg-offset footprint. */
+function isClearArea(tiles: TileType[][], tx: number, ty: number, r: number): boolean {
+  for (let dy = -r; dy <= r + 1; dy++) {
+    for (let dx = -r; dx <= r; dx++) {
+      const nx = tx + dx;
+      const ny = ty + dy;
+      if (nx < 0 || nx >= MAP_WIDTH || ny < 0 || ny >= MAP_HEIGHT) return false;
+      if (!isWalkable(tiles[ny][nx])) return false;
+    }
+  }
+  return true;
 }
