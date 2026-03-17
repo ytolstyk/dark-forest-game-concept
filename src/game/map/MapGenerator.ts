@@ -14,7 +14,7 @@ export interface MapData {
   enemySpawns: Vector2[];
 }
 
-export function generateMap(): MapData {
+export function generateMap(monsterCount = 18): MapData {
   const { octaveNoise, noise2D } = createNoiseGenerator();
 
   const tiles: TileType[][] = [];
@@ -101,7 +101,7 @@ export function generateMap(): MapData {
 
   // Generate enemy spawns away from the player
   const enemySpawns: Vector2[] = [];
-  for (let i = 0; i < 18; i++) {
+  for (let i = 0; i < monsterCount; i++) {
     let spawn = findWalkablePosition(tiles, 15, MAP_WIDTH - 15, 15, MAP_HEIGHT - 15);
     for (let retry = 0; retry < 10; retry++) {
       if (distance(spawn, playerSpawn) > 300) break;

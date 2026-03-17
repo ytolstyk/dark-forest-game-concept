@@ -1,7 +1,8 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import type React from 'react'
 import { Game } from './game/Game'
-import { GameState } from './game/types'
+import { GameState, DEFAULT_GAME_OPTIONS } from './game/types'
+import type { GameOptions } from './game/types'
 import './App.css'
 
 function formatTime(seconds: number): string {
@@ -38,6 +39,8 @@ function App() {
   const [heartRate, setHeartRate] = useState(75)
   const [endAvgHR, setEndAvgHR] = useState(0)
   const [endMaxHR, setEndMaxHR] = useState(0)
+  const [showOptions, setShowOptions] = useState(false)
+  const [options, setOptions] = useState<GameOptions>({ ...DEFAULT_GAME_OPTIONS })
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -147,14 +150,15 @@ function App() {
     if (!game) return
     setLoadProgress(0)
     setGameState(GameState.LOADING)
+    setShowOptions(false)
 
-    await game.startGame((pct) => setLoadProgress(pct))
+    await game.startGame((pct) => setLoadProgress(pct), options)
 
     setGameState(GameState.PLAYING)
     setTorchOn(false)
     setInventory({ keys: false, fuel: false })
     setTotalSteps(0)
-  }, [])
+  }, [options])
 
   return (
     <div className="game-container">
@@ -163,13 +167,67 @@ function App() {
       {gameState === GameState.MENU && (
         <div className="overlay menu-overlay">
           <h1 className="menu-title">Dark Forest</h1>
-          <div className="menu-instructions">
-            <p><kbd>WASD</kbd> or <kbd>Arrow Keys</kbd> to move</p>
-            <p><kbd>Space</kbd> to toggle torch</p>
-            <p>Find the <strong>keys</strong> and <strong>fuel</strong>, then reach the <strong>car</strong> to escape</p>
-            <p>Your torch attracts creatures — use it wisely</p>
-          </div>
-          <button className="btn" onClick={startGame}>Start Game</button>
+          {!showOptions ? (
+            <>
+              <div className="menu-instructions">
+                <p><kbd>WASD</kbd> or <kbd>Arrow Keys</kbd> to move</p>
+                <p><kbd>Space</kbd> to toggle torch</p>
+                <p>Find the <strong>keys</strong> and <strong>fuel</strong>, then reach the <strong>car</strong> to escape</p>
+                <p>Your torch attracts creatures — use it wisely</p>
+              </div>
+              <button className="btn" onClick={startGame}>Start Game</button>
+              <button className="btn btn-secondary" onClick={() => setShowOptions(true)}>Options</button>
+            </>
+          ) : (
+            <div className="options-panel">
+              <h2 className="options-title">Options</h2>
+
+              <div className="option-row">
+                <label className="option-label">Volume</label>
+                <div className="option-control">
+                  <input
+                    type="range" min={0} max={1} step={0.05}
+                    value={options.volume}
+                    className="option-slider"
+                    onChange={(e) => setOptions((o) => ({ ...o, volume: parseFloat(e.target.value) }))}
+                  />
+                  <span className="option-value">{Math.round(options.volume * 100)}%</span>
+                </div>
+              </div>
+
+              <div className="option-row">
+                <label className="option-label">Monsters</label>
+                <div className="option-control">
+                  <input
+                    type="range" min={0} max={40} step={1}
+                    value={options.monsterCount}
+                    className="option-slider"
+                    onChange={(e) => setOptions((o) => ({ ...o, monsterCount: parseInt(e.target.value) }))}
+                  />
+                  <span className="option-value">{options.monsterCount}</span>
+                </div>
+              </div>
+
+              <div className="option-row">
+                <label className="option-label">The Leshen</label>
+                <div className="option-control">
+                  <button
+                    className={`option-toggle ${options.leshenEnabled ? 'on' : 'off'}`}
+                    onClick={() => setOptions((o) => ({ ...o, leshenEnabled: !o.leshenEnabled }))}
+                  >
+                    {options.leshenEnabled ? 'ON' : 'OFF'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="options-actions">
+                <button className="btn btn-secondary" onClick={() => setOptions({ ...DEFAULT_GAME_OPTIONS })}>
+                  Reset Defaults
+                </button>
+                <button className="btn" onClick={() => setShowOptions(false)}>Back</button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

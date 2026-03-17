@@ -1,5 +1,6 @@
 import { Application, Container, Graphics } from 'pixi.js';
-import { GameState, EnemyState, EnemyType, CollectibleType, TileType } from '../types';
+import { GameState, EnemyState, EnemyType, CollectibleType, TileType, DEFAULT_GAME_OPTIONS } from '../types';
+import type { GameOptions } from '../types';
 import { MAX_HEAR_DISTANCE, LESHEN_GLOW_COLOR, LESHEN_GLOW_RADIUS, TILE_SIZE, SPIDER_WEB_SLOW } from '../constants';
 import { distance } from '../utils/math';
 import { generateMap } from '../map/MapGenerator';
@@ -81,13 +82,13 @@ export class GameScene {
     this.enemyAI = new EnemyAISystem(this.pathfinding, this.collision);
   }
 
-  async init(onProgress?: (pct: number) => void) {
-    this.audio.init();
+  async init(onProgress?: (pct: number) => void, options: GameOptions = DEFAULT_GAME_OPTIONS) {
+    this.audio.init(options.volume);
 
     // Yield so the loading UI can paint before we start heavy work
     await new Promise<void>((r) => setTimeout(r, 50));
 
-    const mapData = generateMap();
+    const mapData = generateMap(options.monsterCount);
     this.tiles = mapData.tiles;
 
     // Set tiles for systems
@@ -108,13 +109,15 @@ export class GameScene {
       this.enemies.push(new Enemy(spawn.x, spawn.y, enemyScale, type));
     }
 
-    // Exactly one Leshen — pick a spawn far from the player
-    const leshenSpawn = mapData.enemySpawns.reduce((best, s) => {
-      const d = Math.hypot(s.x - mapData.playerSpawn.x, s.y - mapData.playerSpawn.y);
-      const bd = Math.hypot(best.x - mapData.playerSpawn.x, best.y - mapData.playerSpawn.y);
-      return d > bd ? s : best;
-    }, mapData.enemySpawns[0]);
-    this.enemies.push(new Enemy(leshenSpawn.x, leshenSpawn.y, 1.4, EnemyType.LESHEN));
+    // Exactly one Leshen — pick a spawn far from the player (if enabled)
+    if (options.leshenEnabled && mapData.enemySpawns.length > 0) {
+      const leshenSpawn = mapData.enemySpawns.reduce((best, s) => {
+        const d = Math.hypot(s.x - mapData.playerSpawn.x, s.y - mapData.playerSpawn.y);
+        const bd = Math.hypot(best.x - mapData.playerSpawn.x, best.y - mapData.playerSpawn.y);
+        return d > bd ? s : best;
+      }, mapData.enemySpawns[0]);
+      this.enemies.push(new Enemy(leshenSpawn.x, leshenSpawn.y, 1.4, EnemyType.LESHEN));
+    }
 
     // Create collectibles
     this.collectibles = [

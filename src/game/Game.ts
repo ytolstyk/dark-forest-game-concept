@@ -1,5 +1,7 @@
 import { Application } from 'pixi.js';
 import { GameScene } from './scenes/GameScene';
+import type { GameOptions } from './types';
+import { DEFAULT_GAME_OPTIONS } from './types';
 
 export class Game {
   app: Application;
@@ -46,7 +48,7 @@ export class Game {
     this._onStateChange = callback;
   }
 
-  async startGame(onProgress?: (pct: number) => void) {
+  async startGame(onProgress?: (pct: number) => void, options: GameOptions = DEFAULT_GAME_OPTIONS) {
     if (this.scene) {
       this.scene.destroy();
       this.scene = null;
@@ -55,7 +57,7 @@ export class Game {
     this.scene = new GameScene(this.app, (state: string) => {
       this._onStateChange?.(state);
     });
-    await this.scene.init(onProgress);
+    await this.scene.init(onProgress, options);
 
     if (this._tickerCallback) {
       this.app.ticker.remove(this._tickerCallback);

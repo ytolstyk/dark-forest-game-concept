@@ -39,15 +39,19 @@ export class AudioSystem {
 
   private initialized = false;
 
-  init() {
+  init(volume = 0.6) {
     if (this.initialized) return;
     this.ctx = new AudioContext();
     this.masterGain = this.ctx.createGain();
-    this.masterGain.gain.value = 0.6;
+    this.masterGain.gain.value = volume;
     this.masterGain.connect(this.ctx.destination);
     this.initialized = true;
 
     this.startAmbient();
+  }
+
+  setVolume(volume: number) {
+    if (this.masterGain) this.masterGain.gain.value = volume;
   }
 
   private startAmbient() {

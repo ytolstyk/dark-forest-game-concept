@@ -57,3 +57,15 @@ export interface Inventory {
   keys: boolean;
   fuel: boolean;
 }
+
+export interface GameOptions {
+  volume: number;       // 0–1
+  monsterCount: number; // number of regular enemy spawns
+  leshenEnabled: boolean;
+}
+
+export const DEFAULT_GAME_OPTIONS: GameOptions = {
+  volume: 0.6,
+  monsterCount: 18,
+  leshenEnabled: true,
+};
