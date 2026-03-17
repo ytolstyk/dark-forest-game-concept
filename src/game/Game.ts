@@ -49,6 +49,10 @@ export class Game {
   }
 
   async startGame(onProgress?: (pct: number) => void, options: GameOptions = DEFAULT_GAME_OPTIONS) {
+    if (this._tickerCallback) {
+      this.app.ticker.remove(this._tickerCallback);
+      this._tickerCallback = null;
+    }
     if (this.scene) {
       this.scene.destroy();
       this.scene = null;
@@ -59,9 +63,6 @@ export class Game {
     });
     await this.scene.init(onProgress, options);
 
-    if (this._tickerCallback) {
-      this.app.ticker.remove(this._tickerCallback);
-    }
     this._tickerCallback = () => { this.scene?.update(); };
     this.app.ticker.add(this._tickerCallback);
   }
