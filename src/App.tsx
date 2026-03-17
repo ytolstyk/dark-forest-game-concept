@@ -39,6 +39,9 @@ function App() {
   const [heartRate, setHeartRate] = useState(75)
   const [endAvgHR, setEndAvgHR] = useState(0)
   const [endMaxHR, setEndMaxHR] = useState(0)
+  const [endEnemiesNoticed, setEndEnemiesNoticed] = useState(0)
+  const [endCrowsSpooked, setEndCrowsSpooked] = useState(0)
+  const [endLeshenSteps, setEndLeshenSteps] = useState(0)
   const [showOptions, setShowOptions] = useState(false)
   const [options, setOptions] = useState<GameOptions>({ ...DEFAULT_GAME_OPTIONS })
 
@@ -76,16 +79,22 @@ function App() {
     return () => clearInterval(interval)
   }, [gameState])
 
-  // Capture heart rate stats when game ends
+  // Capture stats when game ends
   useEffect(() => {
     if (gameState !== GameState.GAME_OVER && gameState !== GameState.WIN) return
     const scene = gameRef.current?.scene
     if (scene) {
       const avgHR = scene.avgHeartRate
       const maxHR = scene.maxHeartRate
+      const enemiesNoticed = scene.enemiesNoticed
+      const crowsSpooked = scene.crowsSpooked
+      const leshenSteps = scene.leshenSteps
       setTimeout(() => {
         setEndAvgHR(avgHR)
         setEndMaxHR(maxHR)
+        setEndEnemiesNoticed(enemiesNoticed)
+        setEndCrowsSpooked(crowsSpooked)
+        setEndLeshenSteps(leshenSteps)
       }, 0)
     }
   }, [gameState])
@@ -304,6 +313,25 @@ function App() {
             </div>
             <div className="end-stat-divider" />
             <div className="end-stat">
+              <span className="end-stat-label">enemies noticed you</span>
+              <span className="end-stat-value">{endEnemiesNoticed}</span>
+            </div>
+            <div className="end-stat-divider" />
+            <div className="end-stat">
+              <span className="end-stat-label">crows spooked</span>
+              <span className="end-stat-value">{endCrowsSpooked}</span>
+            </div>
+            {endLeshenSteps > 0 && (
+              <>
+                <div className="end-stat-divider" />
+                <div className="end-stat">
+                  <span className="end-stat-label">leshen steps chasing you</span>
+                  <span className="end-stat-value end-stat-peak">{endLeshenSteps}</span>
+                </div>
+              </>
+            )}
+            <div className="end-stat-divider" />
+            <div className="end-stat">
               <span className="end-stat-label">avg heart rate</span>
               <span className="end-stat-value">♥ {endAvgHR} bpm</span>
             </div>
@@ -330,6 +358,25 @@ function App() {
               <span className="end-stat-label">steps taken</span>
               <span className="end-stat-value">👣 {totalSteps}</span>
             </div>
+            <div className="end-stat-divider" />
+            <div className="end-stat">
+              <span className="end-stat-label">enemies noticed you</span>
+              <span className="end-stat-value">{endEnemiesNoticed}</span>
+            </div>
+            <div className="end-stat-divider" />
+            <div className="end-stat">
+              <span className="end-stat-label">crows spooked</span>
+              <span className="end-stat-value">{endCrowsSpooked}</span>
+            </div>
+            {endLeshenSteps > 0 && (
+              <>
+                <div className="end-stat-divider" />
+                <div className="end-stat">
+                  <span className="end-stat-label">leshen steps chasing you</span>
+                  <span className="end-stat-value end-stat-peak">{endLeshenSteps}</span>
+                </div>
+              </>
+            )}
             <div className="end-stat-divider" />
             <div className="end-stat">
               <span className="end-stat-label">avg heart rate</span>

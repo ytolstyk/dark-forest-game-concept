@@ -57,11 +57,18 @@ export class GameScene {
   heartRate = 75;
   avgHeartRate = 75;
   maxHeartRate = 75;
+  enemiesNoticed = 0;
+  crowsSpooked = 0;
+  leshenSteps = 0;
 
   // Heart rate simulation internals
   private hrFrameTimer = 0;
   private hrSampleSum = 75;
   private hrSampleCount = 1;
+
+  // Stat tracking internals
+  private noticedEnemies = new Set<Enemy>();
+  private leshenChaseAccum = 0;
 
   constructor(app: Application, onStateChange: (state: string) => void) {
     this.app = app;
@@ -212,8 +219,25 @@ export class GameScene {
     let closestEnemyDist = Infinity;
 
     for (const enemy of this.enemies) {
+      const wasChasing = enemy.state === EnemyState.CHASE;
+      const prevPos = { x: enemy.position.x, y: enemy.position.y };
+
       this.enemyAI.update(enemy, this.player.position, this.player.torchOn);
       enemy.updateVisual();
+
+      // Track enemies that notice the player for the first time
+      if (enemy.state === EnemyState.CHASE && !wasChasing && !this.noticedEnemies.has(enemy)) {
+        this.noticedEnemies.add(enemy);
+        this.enemiesNoticed++;
+      }
+
+      // Track Leshen steps (distance traveled while chasing, in tile-sized units)
+      if (enemy.type === EnemyType.LESHEN && enemy.hasDetectedPlayer) {
+        const dx = enemy.position.x - prevPos.x;
+        const dy = enemy.position.y - prevPos.y;
+        this.leshenChaseAccum += Math.sqrt(dx * dx + dy * dy);
+        this.leshenSteps = Math.floor(this.leshenChaseAccum / TILE_SIZE);
+      }
 
       const dist = distance(enemy.position, this.player.position);
       if (dist < closestEnemyDist) closestEnemyDist = dist;
@@ -292,6 +316,7 @@ export class GameScene {
         const dy = flock.position.y - this.player.position.y;
         if (dx * dx + dy * dy < CrowFlock.SCATTER_RADIUS * CrowFlock.SCATTER_RADIUS) {
           flock.scatter();
+          this.crowsSpooked++;
           this.audio.playCrowScatter();
           this.audio.triggerCrowFearHeartbeat();
         }
