@@ -1,7 +1,7 @@
-import { Graphics, Container, Sprite, Texture, ImageSource } from 'pixi.js';
-import { TORCH_RADIUS, AMBIENT_LIGHT_RADIUS, TILE_SIZE } from '../constants';
-import { TileType } from '../types';
-import type { Vector2 } from '../types';
+import { Graphics, Container, Sprite, Texture, ImageSource } from "pixi.js";
+import { TORCH_RADIUS, AMBIENT_LIGHT_RADIUS, TILE_SIZE } from "../constants";
+import { TileType } from "../types";
+import type { Vector2 } from "../types";
 
 interface GlowSource {
   position: Vector2;
@@ -29,11 +29,11 @@ export class LightingSystem {
   private glowGraphics: Graphics;
 
   constructor() {
-    this.canvas = document.createElement('canvas');
+    this.canvas = document.createElement("canvas");
     this.canvas.width = 1;
     this.canvas.height = 1;
-    const ctx = this.canvas.getContext('2d');
-    if (!ctx) throw new Error('Could not get 2d canvas context');
+    const ctx = this.canvas.getContext("2d");
+    if (!ctx) throw new Error("Could not get 2d canvas context");
     this.ctx = ctx;
     this.source = new ImageSource({ resource: this.canvas });
     const texture = new Texture({ source: this.source, dynamic: true });
@@ -43,8 +43,12 @@ export class LightingSystem {
     this.glowLayer.addChild(this.glowGraphics);
   }
 
-  getDarkness(): Container { return this.sprite; }
-  getGlowLayer(): Container { return this.glowLayer; }
+  getDarkness(): Container {
+    return this.sprite;
+  }
+  getGlowLayer(): Container {
+    return this.glowLayer;
+  }
 
   update(
     playerPos: Vector2,
@@ -75,17 +79,24 @@ export class LightingSystem {
 
     // 1. Fill the entire canvas with opaque black — complete darkness by default
     this.ctx.clearRect(0, 0, w, h);
-    this.ctx.globalCompositeOperation = 'source-over';
-    this.ctx.fillStyle = '#000';
+    this.ctx.globalCompositeOperation = "source-over";
+    this.ctx.fillStyle = "#000";
     this.ctx.fillRect(0, 0, w, h);
 
-    this.ctx.globalCompositeOperation = 'destination-out';
+    this.ctx.globalCompositeOperation = "destination-out";
 
     // 2. Ambient sight — always visible tiny circle so the player isn't completely blind
-    const ambGrad = this.ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, AMBIENT_LIGHT_RADIUS * zoom);
-    ambGrad.addColorStop(0,   'rgba(0,0,0,1)');
-    ambGrad.addColorStop(0.7, 'rgba(0,0,0,0.6)');
-    ambGrad.addColorStop(1,   'rgba(0,0,0,0)');
+    const ambGrad = this.ctx.createRadialGradient(
+      screenX,
+      screenY,
+      0,
+      screenX,
+      screenY,
+      AMBIENT_LIGHT_RADIUS * zoom,
+    );
+    ambGrad.addColorStop(0, "rgba(0,0,0,1)");
+    ambGrad.addColorStop(0.7, "rgba(0,0,0,0.6)");
+    ambGrad.addColorStop(1, "rgba(0,0,0,0)");
     this.ctx.fillStyle = ambGrad;
     this.ctx.beginPath();
     this.ctx.arc(screenX, screenY, AMBIENT_LIGHT_RADIUS * zoom, 0, Math.PI * 2);
@@ -94,16 +105,18 @@ export class LightingSystem {
     // 3. Torch — shadow-casting visibility polygon with soft gradient falloff
     if (torchOn) {
       const polygon = this.buildVisibilityPolygon(
-        screenX, screenY,
-        playerPos.x, playerPos.y,
+        screenX,
+        screenY,
+        playerPos.x,
+        playerPos.y,
         TORCH_RADIUS,
         tiles,
         zoom,
       );
 
       if (polygon.length >= 3) {
+        // Pass 1: main torch light — radial gradient clipped to visibility polygon
         this.ctx.save();
-        // Clip rendering to the visible (unblocked) region
         this.ctx.beginPath();
         this.ctx.moveTo(polygon[0][0], polygon[0][1]);
         for (let i = 1; i < polygon.length; i++) {
@@ -113,18 +126,39 @@ export class LightingSystem {
         this.ctx.clip();
 
         // Radial gradient falloff within the polygon (bright at center, fades at edge)
-        const torchGrad = this.ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, TORCH_RADIUS * zoom);
-        torchGrad.addColorStop(0,    'rgba(0,0,0,1)');
-        torchGrad.addColorStop(0.55, 'rgba(0,0,0,0.95)');
-        torchGrad.addColorStop(0.85, 'rgba(0,0,0,0.55)');
-        torchGrad.addColorStop(1,    'rgba(0,0,0,0)');
+        const torchGrad = this.ctx.createRadialGradient(
+          screenX,
+          screenY,
+          0,
+          screenX,
+          screenY,
+          TORCH_RADIUS * zoom,
+        );
+        torchGrad.addColorStop(0, "rgba(0,0,0,1)");
+        torchGrad.addColorStop(0.55, "rgba(0,0,0,0.95)");
+        torchGrad.addColorStop(0.85, "rgba(0,0,0,0.55)");
+        torchGrad.addColorStop(1, "rgba(0,0,0,0)");
         this.ctx.fillStyle = torchGrad;
         this.ctx.fillRect(0, 0, w, h);
+        this.ctx.restore();
+
+        // Pass 2: blurred polygon fill — feathers the hard shadow edges into a soft penumbra
+        this.ctx.save();
+        this.ctx.filter = `blur(${Math.round(22 * zoom)}px)`;
+        this.ctx.beginPath();
+        this.ctx.moveTo(polygon[0][0], polygon[0][1]);
+        for (let i = 1; i < polygon.length; i++) {
+          this.ctx.lineTo(polygon[i][0], polygon[i][1]);
+        }
+        this.ctx.closePath();
+        this.ctx.fillStyle = "rgba(0,0,0,0.5)";
+        this.ctx.fill();
+        this.ctx.filter = "none";
         this.ctx.restore();
       }
     }
 
-    this.ctx.globalCompositeOperation = 'source-over';
+    this.ctx.globalCompositeOperation = "source-over";
 
     // 3. Push updated canvas pixels to the GPU texture
     this.source.update();
@@ -146,8 +180,10 @@ export class LightingSystem {
    *  3. Sort hit-points by angle → polygon
    */
   private buildVisibilityPolygon(
-    screenX: number, screenY: number,
-    worldX: number, worldY: number,
+    screenX: number,
+    screenY: number,
+    worldX: number,
+    worldY: number,
     radius: number,
     tiles: TileType[][],
     zoom = 1,
@@ -157,9 +193,9 @@ export class LightingSystem {
     const tileRadius = Math.ceil(radius / TILE_SIZE) + 1;
     const originTX = Math.floor(worldX / TILE_SIZE);
     const originTY = Math.floor(worldY / TILE_SIZE);
-    const minTX = Math.max(0,       originTX - tileRadius);
+    const minTX = Math.max(0, originTX - tileRadius);
     const maxTX = Math.min(mapW - 1, originTX + tileRadius);
-    const minTY = Math.max(0,       originTY - tileRadius);
+    const minTY = Math.max(0, originTY - tileRadius);
     const maxTY = Math.min(mapH - 1, originTY + tileRadius);
 
     const angles: number[] = [];
@@ -169,13 +205,24 @@ export class LightingSystem {
       for (let tx = minTX; tx <= maxTX; tx++) {
         if (!SHADOW_CASTERS.has(tiles[ty][tx])) continue;
 
-        // Skip interior tiles (all 4 neighbours are also blockers) — they have
+        // Skip interior tiles (all 4 neighbors are also blockers) — they have
         // no visible faces and their corners never produce meaningful shadows.
         let hasOpen = false;
-        for (const [dx, dy] of [[-1,0],[1,0],[0,-1],[0,1]] as [number,number][]) {
-          const nx = tx + dx, ny = ty + dy;
-          if (nx < 0 || nx >= mapW || ny < 0 || ny >= mapH ||
-              !SHADOW_CASTERS.has(tiles[ny][nx])) {
+        for (const [dx, dy] of [
+          [-1, 0],
+          [1, 0],
+          [0, -1],
+          [0, 1],
+        ] as [number, number][]) {
+          const nx = tx + dx,
+            ny = ty + dy;
+          if (
+            nx < 0 ||
+            nx >= mapW ||
+            ny < 0 ||
+            ny >= mapH ||
+            !SHADOW_CASTERS.has(tiles[ny][nx])
+          ) {
             hasOpen = true;
             break;
           }
@@ -184,9 +231,9 @@ export class LightingSystem {
 
         // Cast rays at each of the 4 tile corners (plus ±ε for crisp shadow edges)
         const corners: [number, number][] = [
-          [tx       * TILE_SIZE, ty       * TILE_SIZE],
-          [(tx + 1) * TILE_SIZE, ty       * TILE_SIZE],
-          [tx       * TILE_SIZE, (ty + 1) * TILE_SIZE],
+          [tx * TILE_SIZE, ty * TILE_SIZE],
+          [(tx + 1) * TILE_SIZE, ty * TILE_SIZE],
+          [tx * TILE_SIZE, (ty + 1) * TILE_SIZE],
           [(tx + 1) * TILE_SIZE, (ty + 1) * TILE_SIZE],
         ];
         for (const [cx, cy] of corners) {
@@ -208,9 +255,20 @@ export class LightingSystem {
 
     const points: [number, number][] = [];
     for (const angle of angles) {
-      const [wx, wy] = this.castRay(worldX, worldY, angle, radius, tiles, mapW, mapH);
+      const [wx, wy] = this.castRay(
+        worldX,
+        worldY,
+        angle,
+        radius,
+        tiles,
+        mapW,
+        mapH,
+      );
       // Convert world → screen coords
-      points.push([(wx - worldX) * zoom + screenX, (wy - worldY) * zoom + screenY]);
+      points.push([
+        (wx - worldX) * zoom + screenX,
+        (wy - worldY) * zoom + screenY,
+      ]);
     }
 
     return points;
@@ -222,7 +280,8 @@ export class LightingSystem {
    * Returns the world-space hit point.
    */
   private castRay(
-    ox: number, oy: number,
+    ox: number,
+    oy: number,
     angle: number,
     maxDist: number,
     tiles: TileType[][],
@@ -240,14 +299,14 @@ export class LightingSystem {
 
     // Distance along the ray to the first tile-edge crossing in each axis
     let tMaxX: number;
-    if (rdx === 0)      tMaxX = Infinity;
-    else if (rdx > 0)   tMaxX = ((mapX + 1) * TILE_SIZE - ox) / rdx;
-    else                tMaxX = (mapX       * TILE_SIZE - ox) / rdx;
+    if (rdx === 0) tMaxX = Infinity;
+    else if (rdx > 0) tMaxX = ((mapX + 1) * TILE_SIZE - ox) / rdx;
+    else tMaxX = (mapX * TILE_SIZE - ox) / rdx;
 
     let tMaxY: number;
-    if (rdy === 0)      tMaxY = Infinity;
-    else if (rdy > 0)   tMaxY = ((mapY + 1) * TILE_SIZE - oy) / rdy;
-    else                tMaxY = (mapY       * TILE_SIZE - oy) / rdy;
+    if (rdy === 0) tMaxY = Infinity;
+    else if (rdy > 0) tMaxY = ((mapY + 1) * TILE_SIZE - oy) / rdy;
+    else tMaxY = (mapY * TILE_SIZE - oy) / rdy;
 
     const tDeltaX = rdx !== 0 ? TILE_SIZE / Math.abs(rdx) : Infinity;
     const tDeltaY = rdy !== 0 ? TILE_SIZE / Math.abs(rdy) : Infinity;
