@@ -28,6 +28,11 @@ export class LightingSystem {
   private glowLayer: Container;
   private glowGraphics: Graphics;
 
+  // Flicker state — layered low-frequency noise for organic torch feel
+  private flickerTime = 0;
+  private flickerOffset1 = Math.random() * 100;
+  private flickerOffset2 = Math.random() * 100;
+
   constructor() {
     this.canvas = document.createElement("canvas");
     this.canvas.width = 1;
@@ -62,6 +67,14 @@ export class LightingSystem {
     itemGlows: GlowSource[],
     zoom = 1,
   ) {
+    // Advance flicker — two sine waves at different frequencies for organic noise
+    this.flickerTime += 0.016;
+    const flicker =
+      Math.sin(this.flickerTime * 2.3 + this.flickerOffset1) * 0.5 +
+      Math.sin(this.flickerTime * 5.7 + this.flickerOffset2) * 0.5;
+    // flicker ranges roughly [-1, 1]; scale to subtle radius variance
+    const flickerRadius = TORCH_RADIUS + flicker * 8;
+
     const w = Math.ceil(screenWidth);
     const h = Math.ceil(screenHeight);
 
@@ -109,7 +122,7 @@ export class LightingSystem {
         screenY,
         playerPos.x,
         playerPos.y,
-        TORCH_RADIUS,
+        flickerRadius,
         tiles,
         zoom,
       );
@@ -132,11 +145,13 @@ export class LightingSystem {
           0,
           screenX,
           screenY,
-          TORCH_RADIUS * zoom,
+          flickerRadius * zoom,
         );
         torchGrad.addColorStop(0, "rgba(0,0,0,1)");
-        torchGrad.addColorStop(0.55, "rgba(0,0,0,0.95)");
-        torchGrad.addColorStop(0.85, "rgba(0,0,0,0.55)");
+        torchGrad.addColorStop(0.25, "rgba(0,0,0,0.92)");
+        torchGrad.addColorStop(0.5, "rgba(0,0,0,0.65)");
+        torchGrad.addColorStop(0.72, "rgba(0,0,0,0.3)");
+        torchGrad.addColorStop(0.88, "rgba(0,0,0,0.1)");
         torchGrad.addColorStop(1, "rgba(0,0,0,0)");
         this.ctx.fillStyle = torchGrad;
         this.ctx.fillRect(0, 0, w, h);
