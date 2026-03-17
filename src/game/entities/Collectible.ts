@@ -108,6 +108,6 @@ export class Collectible {
   }
 
   getCollisionRadius(): number {
-    return this.type === CollectibleType.CAR ? 30 : 15;
+    return this.type === CollectibleType.CAR ? 48 : 28;
   }
 }
