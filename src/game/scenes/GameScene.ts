@@ -488,15 +488,23 @@ export class GameScene {
 
   private handleDeath() {
     this.gameOver = true;
-    this.audio.stopAll();
-    this.audio.playDeath();
+    try {
+      this.audio.stopAll();
+      this.audio.playDeath();
+    } catch {
+      // Audio failure must not block the game-over transition
+    }
     this.onStateChange(GameState.GAME_OVER);
   }
 
   private handleWin() {
     this.gameOver = true;
-    this.audio.stopAll();
-    this.audio.playWin();
+    try {
+      this.audio.stopAll();
+      this.audio.playWin();
+    } catch {
+      // Audio failure must not block the win transition
+    }
     this.onStateChange(GameState.WIN);
   }
 

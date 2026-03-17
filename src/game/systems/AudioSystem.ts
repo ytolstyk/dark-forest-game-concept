@@ -11,6 +11,7 @@ export class AudioSystem {
   private chasePulseOsc: OscillatorNode | null = null;
   private chaseGain: GainNode | null = null;
   private chaseDistGain: GainNode | null = null;
+  private chaseOffsetSource: ConstantSourceNode | null = null;
   private chaseActive = false;
 
   // Regular enemy chase
@@ -18,6 +19,7 @@ export class AudioSystem {
   private regularChasePulseOsc: OscillatorNode | null = null;
   private regularChaseGain: GainNode | null = null;
   private regularChaseDistGain: GainNode | null = null;
+  private regularChaseOffsetSource: ConstantSourceNode | null = null;
   private regularChaseActive = false;
 
   // Torch
@@ -285,12 +287,12 @@ export class AudioSystem {
     lfoGain.gain.value = 0.5; // pulse depth: gain swings 0 → 1
 
     // Bias the LFO output so gain stays positive (offset +0.5, amplitude 0.5 → range 0..1)
-    const lfoOffset = this.ctx.createConstantSource();
-    lfoOffset.offset.value = 0.5;
+    this.chaseOffsetSource = this.ctx.createConstantSource();
+    this.chaseOffsetSource.offset.value = 0.5;
 
     const pulseGain = this.ctx.createGain();
-    pulseGain.gain.value = 0; // driven by lfoOffset + lfoGain
-    lfoOffset.connect(pulseGain.gain);
+    pulseGain.gain.value = 0; // driven by chaseOffsetSource + lfoGain
+    this.chaseOffsetSource.connect(pulseGain.gain);
     this.chasePulseOsc.connect(lfoGain);
     lfoGain.connect(pulseGain.gain);
 
@@ -304,7 +306,7 @@ export class AudioSystem {
     this.chaseGain.connect(this.chaseDistGain);
     this.chaseDistGain.connect(this.masterGain);
 
-    lfoOffset.start();
+    this.chaseOffsetSource.start();
     this.chasePulseOsc.start();
     this.chaseOsc.start();
   }
@@ -324,8 +326,10 @@ export class AudioSystem {
 
     this.chaseOsc?.stop();
     this.chasePulseOsc?.stop();
+    this.chaseOffsetSource?.stop();
     this.chaseOsc = null;
     this.chasePulseOsc = null;
+    this.chaseOffsetSource = null;
     this.chaseGain = null;
     this.chaseDistGain = null;
   }
@@ -353,12 +357,12 @@ export class AudioSystem {
     const lfoGain = this.ctx.createGain();
     lfoGain.gain.value = 0.5;
 
-    const lfoOffset = this.ctx.createConstantSource();
-    lfoOffset.offset.value = 0.5;
+    this.regularChaseOffsetSource = this.ctx.createConstantSource();
+    this.regularChaseOffsetSource.offset.value = 0.5;
 
     const pulseGain = this.ctx.createGain();
     pulseGain.gain.value = 0;
-    lfoOffset.connect(pulseGain.gain);
+    this.regularChaseOffsetSource.connect(pulseGain.gain);
     this.regularChasePulseOsc.connect(lfoGain);
     lfoGain.connect(pulseGain.gain);
 
@@ -374,7 +378,7 @@ export class AudioSystem {
     this.regularChaseGain.connect(this.regularChaseDistGain);
     this.regularChaseDistGain.connect(this.masterGain);
 
-    lfoOffset.start();
+    this.regularChaseOffsetSource.start();
     this.regularChasePulseOsc.start();
     this.regularChaseOsc.start();
   }
@@ -393,8 +397,10 @@ export class AudioSystem {
 
     this.regularChaseOsc?.stop();
     this.regularChasePulseOsc?.stop();
+    this.regularChaseOffsetSource?.stop();
     this.regularChaseOsc = null;
     this.regularChasePulseOsc = null;
+    this.regularChaseOffsetSource = null;
     this.regularChaseGain = null;
     this.regularChaseDistGain = null;
   }
