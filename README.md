@@ -4,7 +4,7 @@ A top-down survival game built with React 19, TypeScript, Vite, and Pixi.js v8.
 
 You wake up in a dark forest. Find the **keys** and **fuel**, then reach the **car** to escape — before the creatures find you.
 
-[https://main.drhl42a9wuetq.amplifyapp.com/](https://main.drhl42a9wuetq.amplifyapp.com/)
+[https://darkforest.yuriytolstykh.com/](https://darkforest.yuriytolstykh.com/)
 
 ## How to Play
 
