@@ -58,3 +58,10 @@ export const COLORS = {
   TRACTOR_RUST: 0x4a3020,
   SPIDER_WEB: 0x2d5a1e,
 };
+
+export const DONATION_LINKS = {
+  paypal:
+    "https://www.paypal.com/donate/?business=GBLCRWQ5EDX92&no_recurring=0&item_name=If+you+like+what+I+do%2C+support+my+work.&currency_code=USD",
+  venmo:
+    "https://venmo.com/code?user_id=4550168657528426354&created=1773191320",
+};

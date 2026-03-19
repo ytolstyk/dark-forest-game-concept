@@ -3,6 +3,7 @@ import type React from 'react'
 import { Game } from './game/Game'
 import { GameState, DEFAULT_GAME_OPTIONS } from './game/types'
 import type { GameOptions } from './game/types'
+import { DONATION_LINKS } from './game/constants'
 import './App.css'
 
 function formatTime(seconds: number): string {
@@ -26,6 +27,49 @@ function HeartRateWidget({ bpm }: { bpm: number }) {
   )
 }
 
+function MonsterCreature() {
+  return (
+    <div className="creature-body">
+      <div className="creature-eyes">
+        <div className="creature-eye" />
+        <div className="creature-eye" />
+      </div>
+    </div>
+  )
+}
+
+function SupportModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="support-backdrop" onClick={onClose}>
+      <div className="support-creature support-creature-1"><MonsterCreature /></div>
+      <div className="support-creature support-creature-2"><MonsterCreature /></div>
+      <div className="support-modal" onClick={e => e.stopPropagation()}>
+        <button className="modal-close-btn" onClick={onClose}>&#x2715;</button>
+        <h2 className="modal-title">Support the Developer</h2>
+        <p className="modal-subtitle">Enjoying Dark Forest? Help keep it alive.</p>
+        <div className="modal-donate-btns">
+          <a href={DONATION_LINKS.paypal} target="_blank" rel="noopener noreferrer" className="donate-btn donate-paypal">
+            PayPal
+          </a>
+          <a href={DONATION_LINKS.venmo} target="_blank" rel="noopener noreferrer" className="donate-btn donate-venmo">
+            Venmo
+          </a>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Footer({ onSupportClick }: { onSupportClick: () => void }) {
+  return (
+    <div className="screen-footer">
+      <span className="footer-author">Yuriy Tolstykh</span>
+      <span className="footer-sep">&middot;</span>
+      <button className="footer-support-btn" onClick={onSupportClick}>Support</button>
+    </div>
+  )
+}
+
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const gameRef = useRef<Game | null>(null)
@@ -43,6 +87,7 @@ function App() {
   const [endCrowsSpooked, setEndCrowsSpooked] = useState(0)
   const [endLeshenSteps, setEndLeshenSteps] = useState(0)
   const [showOptions, setShowOptions] = useState(false)
+  const [showSupport, setShowSupport] = useState(false)
   const [options, setOptions] = useState<GameOptions>({ ...DEFAULT_GAME_OPTIONS })
 
   useEffect(() => {
@@ -179,6 +224,7 @@ function App() {
 
       {gameState === GameState.MENU && (
         <div className="overlay menu-overlay">
+          <Footer onSupportClick={() => setShowSupport(true)} />
           <h1 className="menu-title">Dark Forest</h1>
           {!showOptions ? (
             <>
@@ -300,6 +346,7 @@ function App() {
 
       {gameState === GameState.GAME_OVER && (
         <div className="overlay gameover-overlay">
+          <Footer onSupportClick={() => setShowSupport(true)} />
           <h1 className="gameover-title">You Were Caught</h1>
           <div className="end-stats">
             <div className="end-stat">
@@ -347,6 +394,7 @@ function App() {
 
       {gameState === GameState.WIN && (
         <div className="overlay win-overlay">
+          <Footer onSupportClick={() => setShowSupport(true)} />
           <h1 className="win-title">You Escaped the Forest</h1>
           <div className="end-stats">
             <div className="end-stat">
@@ -391,6 +439,7 @@ function App() {
           <button className="btn" onClick={startGame}>Play Again</button>
         </div>
       )}
+      {showSupport && <SupportModal onClose={() => setShowSupport(false)} />}
     </div>
   )
 }
