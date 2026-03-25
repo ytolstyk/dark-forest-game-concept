@@ -66,6 +66,7 @@ export class LightingSystem {
     enemyGlows: GlowSource[],
     itemGlows: GlowSource[],
     zoom = 1,
+    torchRadius = TORCH_RADIUS,
   ) {
     // Advance flicker — two sine waves at different frequencies for organic noise
     this.flickerTime += 0.016;
@@ -73,7 +74,7 @@ export class LightingSystem {
       Math.sin(this.flickerTime * 2.3 + this.flickerOffset1) * 0.5 +
       Math.sin(this.flickerTime * 5.7 + this.flickerOffset2) * 0.5;
     // flicker ranges roughly [-1, 1]; scale to subtle radius variance
-    const flickerRadius = TORCH_RADIUS + flicker * 8;
+    const flickerRadius = torchRadius + flicker * 8;
 
     const w = Math.ceil(screenWidth);
     const h = Math.ceil(screenHeight);

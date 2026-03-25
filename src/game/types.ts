@@ -62,10 +62,14 @@ export interface GameOptions {
   volume: number;       // 0–1
   monsterCount: number; // number of regular enemy spawns
   leshenEnabled: boolean;
+  torchBurnoutEnabled: boolean; // if true, torch fuel depletes while lit
+  torchTimerSeconds: number;    // seconds until torch dies (30–300)
 }
 
 export const DEFAULT_GAME_OPTIONS: GameOptions = {
   volume: 0.6,
   monsterCount: 18,
   leshenEnabled: true,
+  torchBurnoutEnabled: false,
+  torchTimerSeconds: 120,
 };

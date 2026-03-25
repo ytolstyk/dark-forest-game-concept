@@ -13,6 +13,10 @@ const schema = a.schema({
       avgHeartRate: a.integer(),
       maxHeartRate: a.integer(),
       leshenSteps: a.integer(),
+      monsterCount: a.integer(),
+      leshenEnabled: a.boolean(),
+      torchBurnoutEnabled: a.boolean(),
+      torchTimerSeconds: a.integer(),
     })
     .authorization((allow) => [allow.publicApiKey()]),
 });

@@ -31,6 +31,10 @@ export interface LeaderboardEntry {
   avgHeartRate?: number | null
   maxHeartRate?: number | null
   leshenSteps?: number | null
+  monsterCount?: number | null
+  leshenEnabled?: boolean | null
+  torchBurnoutEnabled?: boolean | null
+  torchTimerSeconds?: number | null
 }
 
 export interface GameStats {
@@ -40,6 +44,13 @@ export interface GameStats {
   avgHeartRate?: number
   maxHeartRate?: number
   leshenSteps?: number
+}
+
+export interface GameSettings {
+  monsterCount?: number
+  leshenEnabled?: boolean
+  torchBurnoutEnabled?: boolean
+  torchTimerSeconds?: number
 }
 
 export interface LeaderboardResult {
@@ -53,6 +64,7 @@ export async function submitScore(
   displayTime: string,
   userId: string,
   stats?: GameStats,
+  settings?: GameSettings,
 ): Promise<void> {
   const c = await ensureClient()
   if (!c) return
@@ -67,10 +79,14 @@ export async function submitScore(
     avgHeartRate: stats?.avgHeartRate,
     maxHeartRate: stats?.maxHeartRate,
     leshenSteps: stats?.leshenSteps,
+    monsterCount: settings?.monsterCount,
+    leshenEnabled: settings?.leshenEnabled,
+    torchBurnoutEnabled: settings?.torchBurnoutEnabled,
+    torchTimerSeconds: settings?.torchTimerSeconds,
   })
 }
 
-export async function fetchLeaderboard(): Promise<LeaderboardResult> {
+export async function fetchLeaderboard(settings?: GameSettings): Promise<LeaderboardResult> {
   const c = await ensureClient()
   if (!c) return { entries: [], total: 0 }
 
@@ -78,8 +94,18 @@ export async function fetchLeaderboard(): Promise<LeaderboardResult> {
   if (errors || !data) return { entries: [], total: 0 }
 
   const sorted = [...data].sort((a, b) => (a.timeSeconds ?? 0) - (b.timeSeconds ?? 0))
-  const total = sorted.length
-  const top10 = sorted.slice(0, 10).map((e) => ({
+
+  const filtered = settings
+    ? sorted.filter((e) =>
+        (e.monsterCount ?? null) === (settings.monsterCount ?? null) &&
+        (e.leshenEnabled ?? null) === (settings.leshenEnabled ?? null) &&
+        (e.torchBurnoutEnabled ?? null) === (settings.torchBurnoutEnabled ?? null) &&
+        (e.torchTimerSeconds ?? null) === (settings.torchTimerSeconds ?? null)
+      )
+    : sorted
+
+  const total = filtered.length
+  const top10 = filtered.slice(0, 10).map((e) => ({
     id: e.id,
     username: e.username ?? 'Unknown',
     timeSeconds: e.timeSeconds ?? 0,
@@ -91,6 +117,10 @@ export async function fetchLeaderboard(): Promise<LeaderboardResult> {
     avgHeartRate: e.avgHeartRate ?? null,
     maxHeartRate: e.maxHeartRate ?? null,
     leshenSteps: e.leshenSteps ?? null,
+    monsterCount: e.monsterCount ?? null,
+    leshenEnabled: e.leshenEnabled ?? null,
+    torchBurnoutEnabled: e.torchBurnoutEnabled ?? null,
+    torchTimerSeconds: e.torchTimerSeconds ?? null,
   }))
 
   return { entries: top10, total }

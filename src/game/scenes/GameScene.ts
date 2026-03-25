@@ -1,7 +1,7 @@
 import { Application, Container, Graphics } from 'pixi.js';
 import { GameState, EnemyState, EnemyType, CollectibleType, TileType, DEFAULT_GAME_OPTIONS } from '../types';
 import type { GameOptions } from '../types';
-import { MAX_HEAR_DISTANCE, LESHEN_GLOW_COLOR, LESHEN_GLOW_RADIUS, TILE_SIZE, SPIDER_WEB_SLOW } from '../constants';
+import { MAX_HEAR_DISTANCE, LESHEN_GLOW_COLOR, LESHEN_GLOW_RADIUS, TILE_SIZE, SPIDER_WEB_SLOW, TORCH_RADIUS } from '../constants';
 import { distance } from '../utils/math';
 import { generateMap } from '../map/MapGenerator';
 import { TileMap } from '../map/TileMap';
@@ -46,13 +46,16 @@ export class GameScene {
 
   private crowFlocks: CrowFlock[] = [];
 
+  private options: GameOptions = DEFAULT_GAME_OPTIONS;
   private anyRegularChasing = false;
   private leshenChasing = false;
   private gameOver = false;
   private _paused = false;
+  private torchBurnedOut = false;
 
   // Expose state for React HUD
   torchOn = false;
+  torchFuel = 1; // 0–1; only relevant when options.torchBurnoutEnabled
   inventory = { keys: false, fuel: false };
   totalSteps = 0;
   heartRate = 75;
@@ -91,6 +94,9 @@ export class GameScene {
   }
 
   async init(onProgress?: (pct: number) => void, options: GameOptions = DEFAULT_GAME_OPTIONS) {
+    this.options = options;
+    this.torchFuel = 1;
+    this.torchBurnedOut = false;
     this.audio.init(options.volume);
 
     // Yield so the loading UI can paint before we start heavy work
@@ -179,10 +185,22 @@ export class GameScene {
     this.input.update();
 
     // 2. Torch toggle
-    if (this.input.justPressed('Space')) {
+    if (this.input.justPressed('Space') && !this.torchBurnedOut) {
       this.player.torchOn = !this.player.torchOn;
       this.torchOn = this.player.torchOn;
       this.audio.updateTorch(this.player.torchOn);
+    }
+
+    // Torch fuel depletion
+    if (this.options.torchBurnoutEnabled && this.player.torchOn && !this.torchBurnedOut) {
+      const drainPerFrame = 1 / (this.options.torchTimerSeconds * 60);
+      this.torchFuel = Math.max(0, this.torchFuel - drainPerFrame);
+      if (this.torchFuel <= 0) {
+        this.torchBurnedOut = true;
+        this.player.torchOn = false;
+        this.torchOn = false;
+        this.audio.updateTorch(false);
+      }
     }
 
     // 3. Player movement
@@ -401,6 +419,7 @@ export class GameScene {
       enemyGlows,
       itemGlows,
       zoom,
+      this.getEffectiveTorchRadius(),
     );
 
     // 12. Audio
@@ -535,6 +554,15 @@ export class GameScene {
       // Audio failure must not block the win transition
     }
     this.onStateChange(GameState.WIN);
+  }
+
+  private getEffectiveTorchRadius(): number {
+    if (!this.options.torchBurnoutEnabled) return TORCH_RADIUS;
+    const fuelPct = this.torchFuel * 100;
+    if (fuelPct >= 50) return TORCH_RADIUS;
+    // Below 50%: reduce radius by 1.5% per 1% of fuel below 50%
+    const reductionFactor = (50 - fuelPct) * 0.015;
+    return TORCH_RADIUS * (1 - reductionFactor);
   }
 
   destroy() {

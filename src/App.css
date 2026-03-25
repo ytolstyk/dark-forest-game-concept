@@ -442,6 +442,40 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.torch-fuel-bar-container {
+  position: absolute;
+  top: 54px;
+  right: 20px;
+  width: 120px;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 2px;
+  overflow: hidden;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.torch-fuel-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.15s linear;
+}
+
+.torch-fuel-bar-fill.fuel-high {
+  background: #88cc44;
+  box-shadow: 0 0 6px rgba(136, 204, 68, 0.5);
+}
+
+.torch-fuel-bar-fill.fuel-mid {
+  background: #ffaa22;
+  box-shadow: 0 0 6px rgba(255, 170, 34, 0.5);
+}
+
+.torch-fuel-bar-fill.fuel-low {
+  background: #ff4422;
+  box-shadow: 0 0 6px rgba(255, 68, 34, 0.5);
+}
+
 /* Mobile Controls */
 .mobile-controls {
   display: none;

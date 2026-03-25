@@ -6,7 +6,7 @@ import type { GameOptions } from './game/types'
 import { DONATION_LINKS } from './game/constants'
 import { getUserId, getUsername, setUsername } from './lib/storage'
 import { fetchLeaderboard, getUserRank } from './lib/leaderboard'
-import type { LeaderboardResult } from './lib/leaderboard'
+import type { LeaderboardResult, GameSettings } from './lib/leaderboard'
 import { Leaderboard } from './components/Leaderboard'
 import { SubmitScoreModal } from './components/SubmitScoreModal'
 import { PauseModal } from './components/PauseModal'
@@ -158,6 +158,33 @@ function OptionsPanel({ onBack, options, setOptions, displayName, onNameBlur, on
       </div>
 
       <div className="option-row">
+        <label className="option-label">Torch Burnout</label>
+        <div className="option-control">
+          <button
+            className={`option-toggle ${options.torchBurnoutEnabled ? 'on' : 'off'}`}
+            onClick={() => setOptions((o) => ({ ...o, torchBurnoutEnabled: !o.torchBurnoutEnabled }))}
+          >
+            {options.torchBurnoutEnabled ? 'ON' : 'OFF'}
+          </button>
+        </div>
+      </div>
+
+      {options.torchBurnoutEnabled && (
+        <div className="option-row">
+          <label className="option-label">Torch Time</label>
+          <div className="option-control">
+            <input
+              type="range" min={30} max={300} step={10}
+              value={options.torchTimerSeconds}
+              className="option-slider"
+              onChange={(e) => setOptions((o) => ({ ...o, torchTimerSeconds: parseInt(e.target.value) }))}
+            />
+            <span className="option-value">{options.torchTimerSeconds}s</span>
+          </div>
+        </div>
+      )}
+
+      <div className="option-row">
         <label className="option-label">Name</label>
         <div className="option-control">
           <input
@@ -196,6 +223,7 @@ function App() {
   const [gameState, setGameState] = useState<GameState>(GameState.MENU)
   const [loadProgress, setLoadProgress] = useState(0)
   const [torchOn, setTorchOn] = useState(false)
+  const [torchFuel, setTorchFuel] = useState(1)
   const [inventory, setInventory] = useState({ keys: false, fuel: false })
   const [totalSteps, setTotalSteps] = useState(0)
   const [elapsed, setElapsed] = useState(0)
@@ -255,6 +283,7 @@ function App() {
       const scene = gameRef.current?.scene
       if (scene) {
         setTorchOn(scene.torchOn)
+        setTorchFuel(scene.torchFuel)
         setInventory({ ...scene.inventory })
         setTotalSteps(scene.totalSteps)
         setHeartRate(scene.heartRate)
@@ -293,10 +322,19 @@ function App() {
     }
   }, [gameState])
 
+  function currentGameSettings(): GameSettings {
+    return {
+      monsterCount: options.monsterCount,
+      leshenEnabled: options.leshenEnabled,
+      torchBurnoutEnabled: options.torchBurnoutEnabled,
+      torchTimerSeconds: options.torchBurnoutEnabled ? options.torchTimerSeconds : undefined,
+    }
+  }
+
   async function loadLeaderboard(submittedUserId: string | null) {
     setLbLoading(true)
     try {
-      const result = await fetchLeaderboard()
+      const result = await fetchLeaderboard(currentGameSettings())
       setLeaderboard(result)
       if (submittedUserId) {
         // Re-fetch full list for accurate rank
@@ -415,6 +453,7 @@ function App() {
 
     setGameState(GameState.PLAYING)
     setTorchOn(false)
+    setTorchFuel(1)
     setInventory({ keys: false, fuel: false })
     setTotalSteps(0)
   }, [options])
@@ -435,7 +474,7 @@ function App() {
   async function handleViewLeaderboard() {
     setLbLoading(true)
     try {
-      const result = await fetchLeaderboard()
+      const result = await fetchLeaderboard(currentGameSettings())
       setLeaderboard(result)
     } catch {
       setLeaderboard(EMPTY_LB)
@@ -559,6 +598,14 @@ function App() {
           <div className={`torch-indicator ${torchOn ? 'on' : 'off'}`}>
             {torchOn ? 'TORCH ON' : 'TORCH OFF'}
           </div>
+          {options.torchBurnoutEnabled && (
+            <div className="torch-fuel-bar-container">
+              <div
+                className={`torch-fuel-bar-fill ${torchFuel > 0.5 ? 'fuel-high' : torchFuel > 0.25 ? 'fuel-mid' : 'fuel-low'}`}
+                style={{ width: `${torchFuel * 100}%` }}
+              />
+            </div>
+          )}
           <div className="hud">
             <div className={`hud-slot ${inventory.keys ? 'collected' : ''}`}>
               <span className="icon">🔑</span>
@@ -679,6 +726,7 @@ function App() {
             maxHeartRate: endMaxHR,
             leshenSteps: endLeshenSteps,
           }}
+          settings={currentGameSettings()}
           onDone={handleSubmitDone}
         />
       )}
