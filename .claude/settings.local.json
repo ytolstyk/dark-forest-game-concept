@@ -17,7 +17,11 @@
       "mcp__plugin_chrome-devtools-mcp_chrome-devtools__list_network_requests",
       "mcp__plugin_chrome-devtools-mcp_chrome-devtools__new_page",
       "Bash(rtk tsc:*)",
-      "Bash(rtk lint:*)"
+      "Bash(rtk lint:*)",
+      "Bash(node_modules/.bin/eslint src/)",
+      "Bash(node:*)",
+      "Bash(npm list:*)",
+      "Bash(node --input-type=module -e \"import {tsImport} from ''''tsx/esm/api''''; console.log\\(typeof tsImport\\);\")"
     ]
   }
 }

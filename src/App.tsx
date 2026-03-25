@@ -4,6 +4,12 @@ import { Game } from './game/Game'
 import { GameState, DEFAULT_GAME_OPTIONS } from './game/types'
 import type { GameOptions } from './game/types'
 import { DONATION_LINKS } from './game/constants'
+import { getUserId, getUsername, setUsername } from './lib/storage'
+import { fetchLeaderboard, getUserRank } from './lib/leaderboard'
+import type { LeaderboardResult } from './lib/leaderboard'
+import { Leaderboard } from './components/Leaderboard'
+import { SubmitScoreModal } from './components/SubmitScoreModal'
+import { PauseModal } from './components/PauseModal'
 import './App.css'
 
 function formatTime(seconds: number): string {
@@ -16,7 +22,6 @@ function HeartRateWidget({ bpm }: { bpm: number }) {
   const danger = bpm >= 150
   const elevated = bpm >= 110
   const color = danger ? '#ff3333' : elevated ? '#ff8844' : '#88cc88'
-  // pulse animation period matches actual bpm
   const pulseDuration = `${(60 / bpm / 2).toFixed(2)}s`
   return (
     <div className="heart-rate-widget" style={{ borderColor: color, color }}>
@@ -70,6 +75,121 @@ function Footer({ onSupportClick }: { onSupportClick: () => void }) {
   )
 }
 
+const EMPTY_LB: LeaderboardResult = { entries: [], total: 0 }
+
+interface OptionsPanelProps {
+  onBack: () => void
+  options: GameOptions
+  setOptions: React.Dispatch<React.SetStateAction<GameOptions>>
+  displayName: string
+  onNameBlur: (value: string) => void
+  onViewLeaderboard: () => void
+  leaderboard: LeaderboardResult
+  lbLoading: boolean
+  userId: string
+}
+
+function OptionsPanel({ onBack, options, setOptions, displayName, onNameBlur, onViewLeaderboard, leaderboard, lbLoading, userId }: OptionsPanelProps) {
+  const [showLb, setShowLb] = useState(false)
+
+  function handleViewLeaderboard() {
+    onViewLeaderboard()
+    setShowLb(true)
+  }
+
+  if (showLb) {
+    return (
+      <div className="options-panel">
+        <h2 className="options-title">Leaderboard</h2>
+        <Leaderboard
+          entries={leaderboard.entries}
+          total={leaderboard.total}
+          userId={userId}
+          userRank={null}
+          loading={lbLoading}
+        />
+        <div className="options-actions">
+          <button className="btn" onClick={() => setShowLb(false)}>Back</button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="options-panel">
+      <h2 className="options-title">Options</h2>
+
+      <div className="option-row">
+        <label className="option-label">Volume</label>
+        <div className="option-control">
+          <input
+            type="range" min={0} max={1} step={0.05}
+            value={options.volume}
+            className="option-slider"
+            onChange={(e) => setOptions((o) => ({ ...o, volume: parseFloat(e.target.value) }))}
+          />
+          <span className="option-value">{Math.round(options.volume * 100)}%</span>
+        </div>
+      </div>
+
+      <div className="option-row">
+        <label className="option-label">Monsters</label>
+        <div className="option-control">
+          <input
+            type="range" min={0} max={40} step={1}
+            value={options.monsterCount}
+            className="option-slider"
+            onChange={(e) => setOptions((o) => ({ ...o, monsterCount: parseInt(e.target.value) }))}
+          />
+          <span className="option-value">{options.monsterCount}</span>
+        </div>
+      </div>
+
+      <div className="option-row">
+        <label className="option-label">The Leshen</label>
+        <div className="option-control">
+          <button
+            className={`option-toggle ${options.leshenEnabled ? 'on' : 'off'}`}
+            onClick={() => setOptions((o) => ({ ...o, leshenEnabled: !o.leshenEnabled }))}
+          >
+            {options.leshenEnabled ? 'ON' : 'OFF'}
+          </button>
+        </div>
+      </div>
+
+      <div className="option-row">
+        <label className="option-label">Name</label>
+        <div className="option-control">
+          <input
+            type="text"
+            className="option-name-input"
+            maxLength={24}
+            placeholder="Anonymous"
+            defaultValue={displayName}
+            onBlur={(e) => onNameBlur(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="option-row option-row-action">
+        <label className="option-label">Leaderboard</label>
+        <div className="option-control">
+          <button className="option-toggle on" onClick={handleViewLeaderboard}>
+            View
+          </button>
+        </div>
+      </div>
+
+      <div className="options-actions">
+        <button className="btn btn-secondary" onClick={() => setOptions({ ...DEFAULT_GAME_OPTIONS })}>
+          Reset Defaults
+        </button>
+        <button className="btn" onClick={onBack}>Back</button>
+      </div>
+    </div>
+  )
+}
+
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const gameRef = useRef<Game | null>(null)
@@ -89,6 +209,25 @@ function App() {
   const [showOptions, setShowOptions] = useState(false)
   const [showSupport, setShowSupport] = useState(false)
   const [options, setOptions] = useState<GameOptions>({ ...DEFAULT_GAME_OPTIONS })
+
+  // User identity
+  const [userId] = useState(() => getUserId())
+  const [displayName, setDisplayName] = useState(() => getUsername())
+
+  // Pause
+  const [isPaused, setIsPaused] = useState(false)
+  const [pauseShowOptions, setPauseShowOptions] = useState(false)
+
+  // Submit score modal (WIN flow)
+  const [showSubmitModal, setShowSubmitModal] = useState(false)
+
+  // Leaderboard state
+  const [leaderboard, setLeaderboard] = useState<LeaderboardResult>(EMPTY_LB)
+  const [lbLoading, setLbLoading] = useState(false)
+  const [userRank, setUserRank] = useState<number | null>(null)
+
+  // All entries (for rank calculation — top 1000 fetched internally)
+  const allEntriesRef = useRef<{ userId: string }[]>([])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -142,7 +281,42 @@ function App() {
         setEndLeshenSteps(leshenSteps)
       }, 0)
     }
+
+    if (gameState === GameState.WIN) {
+      // Show submit modal first; leaderboard loads after submit/skip
+      setShowSubmitModal(true)
+      setLeaderboard(EMPTY_LB)
+      setUserRank(null)
+    } else {
+      // GAME_OVER: fetch leaderboard immediately (no rank)
+      loadLeaderboard(null)
+    }
   }, [gameState])
+
+  async function loadLeaderboard(submittedUserId: string | null) {
+    setLbLoading(true)
+    try {
+      const result = await fetchLeaderboard()
+      setLeaderboard(result)
+      if (submittedUserId) {
+        // Re-fetch full list for accurate rank
+        const rank = getUserRank(submittedUserId, allEntriesRef.current.length > 0
+          ? allEntriesRef.current
+          : result.entries)
+        setUserRank(rank)
+      }
+    } catch {
+      setLeaderboard(EMPTY_LB)
+    } finally {
+      setLbLoading(false)
+    }
+  }
+
+  function handleSubmitDone(submitted: boolean) {
+    setShowSubmitModal(false)
+    // After submit or skip, load leaderboard; pass userId only if submitted
+    loadLeaderboard(submitted ? userId : null)
+  }
 
   // Timer — runs while playing
   useEffect(() => {
@@ -153,6 +327,31 @@ function App() {
       setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000))
     }, 1000)
     return () => clearInterval(interval)
+  }, [gameState])
+
+  // Escape key — pause / unpause during PLAYING
+  useEffect(() => {
+    if (gameState !== GameState.PLAYING) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsPaused((p) => {
+          const next = !p
+          if (next) gameRef.current?.pause()
+          else gameRef.current?.resume()
+          return next
+        })
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [gameState])
+
+  // Reset pause state when leaving PLAYING
+  useEffect(() => {
+    if (gameState !== GameState.PLAYING) {
+      setIsPaused(false)
+      setPauseShowOptions(false)
+    }
   }, [gameState])
 
   const joystickPadRef = useRef<HTMLDivElement>(null)
@@ -209,6 +408,8 @@ function App() {
     setLoadProgress(0)
     setGameState(GameState.LOADING)
     setShowOptions(false)
+    setIsPaused(false)
+    setPauseShowOptions(false)
 
     await game.startGame((pct) => setLoadProgress(pct), options)
 
@@ -218,9 +419,83 @@ function App() {
     setTotalSteps(0)
   }, [options])
 
+  function handleResume() {
+    setIsPaused(false)
+    setPauseShowOptions(false)
+    gameRef.current?.resume()
+  }
+
+  function handleMainMenu() {
+    gameRef.current?.stopGame()
+    setGameState(GameState.MENU)
+    setIsPaused(false)
+    setPauseShowOptions(false)
+  }
+
+  async function handleViewLeaderboard() {
+    setLbLoading(true)
+    try {
+      const result = await fetchLeaderboard()
+      setLeaderboard(result)
+    } catch {
+      setLeaderboard(EMPTY_LB)
+    } finally {
+      setLbLoading(false)
+    }
+  }
+
+  function handleNameBlur(value: string) {
+    const trimmed = value.trim()
+    setDisplayName(trimmed)
+    setUsername(trimmed)
+  }
+
+  const endStatsBlock = (
+    <>
+      <div className="end-stat">
+        <span className="end-stat-label">survived</span>
+        <span className="end-stat-value">{formatTime(elapsed)}</span>
+      </div>
+      <div className="end-stat-divider" />
+      <div className="end-stat">
+        <span className="end-stat-label">steps taken</span>
+        <span className="end-stat-value">👣 {totalSteps}</span>
+      </div>
+      <div className="end-stat-divider" />
+      <div className="end-stat">
+        <span className="end-stat-label">enemies noticed you</span>
+        <span className="end-stat-value">{endEnemiesNoticed}</span>
+      </div>
+      <div className="end-stat-divider" />
+      <div className="end-stat">
+        <span className="end-stat-label">crows spooked</span>
+        <span className="end-stat-value">{endCrowsSpooked}</span>
+      </div>
+      {endLeshenSteps > 0 && (
+        <>
+          <div className="end-stat-divider" />
+          <div className="end-stat">
+            <span className="end-stat-label">leshen steps chasing you</span>
+            <span className="end-stat-value end-stat-peak">{endLeshenSteps}</span>
+          </div>
+        </>
+      )}
+      <div className="end-stat-divider" />
+      <div className="end-stat">
+        <span className="end-stat-label">avg heart rate</span>
+        <span className="end-stat-value">♥ {endAvgHR} bpm</span>
+      </div>
+      <div className="end-stat-divider" />
+      <div className="end-stat">
+        <span className="end-stat-label">peak heart rate</span>
+        <span className="end-stat-value end-stat-peak">♥ {endMaxHR} bpm</span>
+      </div>
+    </>
+  )
+
   return (
     <div className="game-container">
-      <canvas ref={canvasRef} />
+      <canvas ref={canvasRef} style={(isPaused && pauseShowOptions) || (gameState === GameState.MENU && showOptions) ? { pointerEvents: 'none' } : undefined} />
 
       {gameState === GameState.MENU && (
         <div className="overlay menu-overlay">
@@ -238,54 +513,7 @@ function App() {
               <button className="btn btn-secondary" onClick={() => setShowOptions(true)}>Options</button>
             </>
           ) : (
-            <div className="options-panel">
-              <h2 className="options-title">Options</h2>
-
-              <div className="option-row">
-                <label className="option-label">Volume</label>
-                <div className="option-control">
-                  <input
-                    type="range" min={0} max={1} step={0.05}
-                    value={options.volume}
-                    className="option-slider"
-                    onChange={(e) => setOptions((o) => ({ ...o, volume: parseFloat(e.target.value) }))}
-                  />
-                  <span className="option-value">{Math.round(options.volume * 100)}%</span>
-                </div>
-              </div>
-
-              <div className="option-row">
-                <label className="option-label">Monsters</label>
-                <div className="option-control">
-                  <input
-                    type="range" min={0} max={40} step={1}
-                    value={options.monsterCount}
-                    className="option-slider"
-                    onChange={(e) => setOptions((o) => ({ ...o, monsterCount: parseInt(e.target.value) }))}
-                  />
-                  <span className="option-value">{options.monsterCount}</span>
-                </div>
-              </div>
-
-              <div className="option-row">
-                <label className="option-label">The Leshen</label>
-                <div className="option-control">
-                  <button
-                    className={`option-toggle ${options.leshenEnabled ? 'on' : 'off'}`}
-                    onClick={() => setOptions((o) => ({ ...o, leshenEnabled: !o.leshenEnabled }))}
-                  >
-                    {options.leshenEnabled ? 'ON' : 'OFF'}
-                  </button>
-                </div>
-              </div>
-
-              <div className="options-actions">
-                <button className="btn btn-secondary" onClick={() => setOptions({ ...DEFAULT_GAME_OPTIONS })}>
-                  Reset Defaults
-                </button>
-                <button className="btn" onClick={() => setShowOptions(false)}>Back</button>
-              </div>
-            </div>
+            <OptionsPanel onBack={() => setShowOptions(false)} options={options} setOptions={setOptions} displayName={displayName} onNameBlur={handleNameBlur} onViewLeaderboard={handleViewLeaderboard} leaderboard={leaderboard} lbLoading={lbLoading} userId={userId} />
           )}
         </div>
       )}
@@ -320,6 +548,10 @@ function App() {
               className="mobile-torch-btn"
               onTouchStart={handleTorchTap}
             >🔦</div>
+            <div
+              className="mobile-menu-btn"
+              onTouchStart={(e) => { e.stopPropagation(); setIsPaused(true); gameRef.current?.pause() }}
+            >&#9776;</div>
           </div>
           <div className="game-timer">{formatTime(elapsed)}</div>
           <div className="step-counter">👣 {totalSteps}</div>
@@ -341,6 +573,23 @@ function App() {
               <span>Car</span>
             </div>
           </div>
+
+          {isPaused && !pauseShowOptions && (
+            <PauseModal
+              onResume={handleResume}
+              onRestart={startGame}
+              onMainMenu={handleMainMenu}
+              onOptions={() => setPauseShowOptions(true)}
+            />
+          )}
+
+          {isPaused && pauseShowOptions && (
+            <div className="pause-backdrop" onClick={handleResume}>
+              <div className="pause-modal pause-modal-options" onClick={(e) => e.stopPropagation()}>
+                <OptionsPanel onBack={() => setPauseShowOptions(false)} options={options} setOptions={setOptions} displayName={displayName} onNameBlur={handleNameBlur} onViewLeaderboard={handleViewLeaderboard} leaderboard={leaderboard} lbLoading={lbLoading} userId={userId} />
+              </div>
+            </div>
+          )}
         </>
       )}
 
@@ -349,50 +598,20 @@ function App() {
           <Footer onSupportClick={() => setShowSupport(true)} />
           <h1 className="gameover-title">You Were Caught</h1>
           <div className="end-stats">
-            <div className="end-stat">
-              <span className="end-stat-label">survived</span>
-              <span className="end-stat-value">{formatTime(elapsed)}</span>
-            </div>
-            <div className="end-stat-divider" />
-            <div className="end-stat">
-              <span className="end-stat-label">steps taken</span>
-              <span className="end-stat-value">👣 {totalSteps}</span>
-            </div>
-            <div className="end-stat-divider" />
-            <div className="end-stat">
-              <span className="end-stat-label">enemies noticed you</span>
-              <span className="end-stat-value">{endEnemiesNoticed}</span>
-            </div>
-            <div className="end-stat-divider" />
-            <div className="end-stat">
-              <span className="end-stat-label">crows spooked</span>
-              <span className="end-stat-value">{endCrowsSpooked}</span>
-            </div>
-            {endLeshenSteps > 0 && (
-              <>
-                <div className="end-stat-divider" />
-                <div className="end-stat">
-                  <span className="end-stat-label">leshen steps chasing you</span>
-                  <span className="end-stat-value end-stat-peak">{endLeshenSteps}</span>
-                </div>
-              </>
-            )}
-            <div className="end-stat-divider" />
-            <div className="end-stat">
-              <span className="end-stat-label">avg heart rate</span>
-              <span className="end-stat-value">♥ {endAvgHR} bpm</span>
-            </div>
-            <div className="end-stat-divider" />
-            <div className="end-stat">
-              <span className="end-stat-label">peak heart rate</span>
-              <span className="end-stat-value end-stat-peak">♥ {endMaxHR} bpm</span>
-            </div>
+            {endStatsBlock}
           </div>
+          <Leaderboard
+            entries={leaderboard.entries}
+            total={leaderboard.total}
+            userId={userId}
+            userRank={null}
+            loading={lbLoading}
+          />
           <button className="btn" onClick={startGame}>Try Again</button>
         </div>
       )}
 
-      {gameState === GameState.WIN && (
+      {gameState === GameState.WIN && !showSubmitModal && (
         <div className="overlay win-overlay">
           <Footer onSupportClick={() => setShowSupport(true)} />
           <h1 className="win-title">You Escaped the Forest</h1>
@@ -436,10 +655,29 @@ function App() {
               <span className="end-stat-value end-stat-peak">♥ {endMaxHR} bpm</span>
             </div>
           </div>
+          <Leaderboard
+            entries={leaderboard.entries}
+            total={leaderboard.total}
+            userId={userId}
+            userRank={userRank}
+            loading={lbLoading}
+          />
           <button className="btn" onClick={startGame}>Play Again</button>
         </div>
       )}
+
+      {gameState === GameState.WIN && showSubmitModal && (
+        <SubmitScoreModal
+          timeSeconds={elapsed}
+          displayTime={formatTime(elapsed)}
+          userId={userId}
+          onDone={handleSubmitDone}
+        />
+      )}
+
       {showSupport && <SupportModal onClose={() => setShowSupport(false)} />}
+
+
     </div>
   )
 }

@@ -8,9 +8,13 @@ export class InputSystem {
 
   constructor() {
     window.addEventListener('keydown', (e) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
       this.keys.add(e.code);
     });
     window.addEventListener('keyup', (e) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
       this.keys.delete(e.code);
     });
     window.addEventListener('blur', () => {

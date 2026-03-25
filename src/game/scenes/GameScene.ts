@@ -49,6 +49,7 @@ export class GameScene {
   private anyRegularChasing = false;
   private leshenChasing = false;
   private gameOver = false;
+  private _paused = false;
 
   // Expose state for React HUD
   torchOn = false;
@@ -164,8 +165,11 @@ export class GameScene {
     this.app.stage.addChild(this.lighting.getGlowLayer());
   }
 
+  pause() { this._paused = true }
+  resume() { this._paused = false }
+
   update = () => {
-    if (this.gameOver) return;
+    if (this.gameOver || this._paused) return;
 
     const screenW = this.app.screen.width;
     const screenH = this.app.screen.height;

@@ -1,0 +1,7 @@
+type LeaderboardEntry @model @auth(rules: [{allow: public, provider: apiKey}])
+{
+  username: String!
+  timeSeconds: Int!
+  userId: String!
+  displayTime: String!
+}

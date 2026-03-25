@@ -67,6 +67,9 @@ export class Game {
     this.app.ticker.add(this._tickerCallback);
   }
 
+  pause() { this.scene?.pause() }
+  resume() { this.scene?.resume() }
+
   stopGame() {
     if (this._tickerCallback) {
       this.app.ticker.remove(this._tickerCallback);
