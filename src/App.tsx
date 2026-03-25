@@ -550,7 +550,7 @@ function App() {
             >🔦</div>
             <div
               className="mobile-menu-btn"
-              onTouchStart={(e) => { e.stopPropagation(); setIsPaused(true); gameRef.current?.pause() }}
+              onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); setIsPaused(true); gameRef.current?.pause() }}
             >&#9776;</div>
           </div>
           <div className="game-timer">{formatTime(elapsed)}</div>
