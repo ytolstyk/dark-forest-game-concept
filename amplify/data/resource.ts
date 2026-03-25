@@ -7,6 +7,12 @@ const schema = a.schema({
       timeSeconds: a.integer().required(),
       userId: a.string().required(),
       displayTime: a.string().required(),
+      stepsTaken: a.integer(),
+      enemiesNoticed: a.integer(),
+      crowsSpooked: a.integer(),
+      avgHeartRate: a.integer(),
+      maxHeartRate: a.integer(),
+      leshenSteps: a.integer(),
     })
     .authorization((allow) => [allow.publicApiKey()]),
 });

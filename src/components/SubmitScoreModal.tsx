@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import { getUsername, setUsername } from '../lib/storage'
 import { submitScore } from '../lib/leaderboard'
+import type { GameStats } from '../lib/leaderboard'
 
 interface Props {
   timeSeconds: number
   displayTime: string
   userId: string
+  stats?: GameStats
   onDone: (submitted: boolean) => void
 }
 
-export function SubmitScoreModal({ timeSeconds, displayTime, userId, onDone }: Props) {
+export function SubmitScoreModal({ timeSeconds, displayTime, userId, stats, onDone }: Props) {
   const [name, setName] = useState(getUsername())
   const [submitting, setSubmitting] = useState(false)
 
@@ -17,7 +19,7 @@ export function SubmitScoreModal({ timeSeconds, displayTime, userId, onDone }: P
     const trimmed = name.trim() || 'Anonymous'
     setUsername(trimmed)
     setSubmitting(true)
-    await submitScore(trimmed, timeSeconds, displayTime, userId)
+    await submitScore(trimmed, timeSeconds, displayTime, userId, stats)
     setSubmitting(false)
     onDone(true)
   }

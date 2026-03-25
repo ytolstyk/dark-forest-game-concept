@@ -671,6 +671,14 @@ function App() {
           timeSeconds={elapsed}
           displayTime={formatTime(elapsed)}
           userId={userId}
+          stats={{
+            stepsTaken: totalSteps,
+            enemiesNoticed: endEnemiesNoticed,
+            crowsSpooked: endCrowsSpooked,
+            avgHeartRate: endAvgHR,
+            maxHeartRate: endMaxHR,
+            leshenSteps: endLeshenSteps,
+          }}
           onDone={handleSubmitDone}
         />
       )}

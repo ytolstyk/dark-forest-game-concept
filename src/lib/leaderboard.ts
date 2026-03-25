@@ -25,6 +25,21 @@ export interface LeaderboardEntry {
   timeSeconds: number
   userId: string
   displayTime: string
+  stepsTaken?: number | null
+  enemiesNoticed?: number | null
+  crowsSpooked?: number | null
+  avgHeartRate?: number | null
+  maxHeartRate?: number | null
+  leshenSteps?: number | null
+}
+
+export interface GameStats {
+  stepsTaken?: number
+  enemiesNoticed?: number
+  crowsSpooked?: number
+  avgHeartRate?: number
+  maxHeartRate?: number
+  leshenSteps?: number
 }
 
 export interface LeaderboardResult {
@@ -37,10 +52,22 @@ export async function submitScore(
   timeSeconds: number,
   displayTime: string,
   userId: string,
+  stats?: GameStats,
 ): Promise<void> {
   const c = await ensureClient()
   if (!c) return
-  await c.models.LeaderboardEntry.create({ username, timeSeconds, userId, displayTime })
+  await c.models.LeaderboardEntry.create({
+    username,
+    timeSeconds,
+    userId,
+    displayTime,
+    stepsTaken: stats?.stepsTaken,
+    enemiesNoticed: stats?.enemiesNoticed,
+    crowsSpooked: stats?.crowsSpooked,
+    avgHeartRate: stats?.avgHeartRate,
+    maxHeartRate: stats?.maxHeartRate,
+    leshenSteps: stats?.leshenSteps,
+  })
 }
 
 export async function fetchLeaderboard(): Promise<LeaderboardResult> {
@@ -58,6 +85,12 @@ export async function fetchLeaderboard(): Promise<LeaderboardResult> {
     timeSeconds: e.timeSeconds ?? 0,
     userId: e.userId ?? '',
     displayTime: e.displayTime ?? '',
+    stepsTaken: e.stepsTaken ?? null,
+    enemiesNoticed: e.enemiesNoticed ?? null,
+    crowsSpooked: e.crowsSpooked ?? null,
+    avgHeartRate: e.avgHeartRate ?? null,
+    maxHeartRate: e.maxHeartRate ?? null,
+    leshenSteps: e.leshenSteps ?? null,
   }))
 
   return { entries: top10, total }

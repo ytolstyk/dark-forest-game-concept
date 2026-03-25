@@ -986,6 +986,7 @@
   padding: 16px 20px 12px;
   margin-bottom: 28px;
   font-family: 'Courier New', monospace;
+  overflow-x: auto;
 }
 
 .lb-header {
@@ -995,6 +996,29 @@
   text-transform: uppercase;
   text-align: center;
   margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.lb-toggle-btn {
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: rgba(136, 170, 136, 0.6);
+  background: none;
+  border: 1px solid rgba(136, 170, 136, 0.25);
+  border-radius: 3px;
+  padding: 2px 7px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.lb-toggle-btn:hover {
+  color: #88aa88;
+  border-color: rgba(136, 170, 136, 0.5);
 }
 
 .lb-loading {
@@ -1039,8 +1063,21 @@
 
 .lb-table td:last-child {
   text-align: right;
+}
+
+.lb-table td.lb-td-time {
   color: #88aa88;
   letter-spacing: 1px;
+}
+
+.lb-table td.lb-td-extra {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 12px;
+  text-align: right;
+}
+
+.lb-table th.lb-th-extra {
+  text-align: right;
 }
 
 .lb-table tr.lb-row-highlight td {
