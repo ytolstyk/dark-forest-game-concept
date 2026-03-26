@@ -156,6 +156,8 @@ function Footer({ onSupportClick }: { onSupportClick: () => void }) {
       <button className="footer-support-btn" onClick={onSupportClick}>
         Support
       </button>
+      <span className="footer-sep">&middot;</span>
+      <span className="footer-commit">{__COMMIT_HASH__}</span>
     </div>
   );
 }
