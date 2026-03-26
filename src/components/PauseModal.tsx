@@ -31,18 +31,16 @@ interface Props {
 
 export function PauseModal({ difficulty, options, onResume, onRestart, onMainMenu, onOptions }: Props) {
   return (
-    <div className="pause-backdrop" onClick={onResume}>
-      <div className="pause-modal" onClick={(e) => e.stopPropagation()}>
-        <Stack gap="sm" align="stretch">
-          <Title order={2} className="pause-title">Paused</Title>
-          <Text size="xs" c="dimmed" ta="center">{difficultyLabel(difficulty, options)}</Text>
-          <Divider />
-          <Button onClick={onResume}>Resume</Button>
-          <Button variant="subtle" onClick={onOptions}>Options</Button>
-          <Button variant="subtle" onClick={onRestart}>Restart</Button>
-          <Button variant="subtle" onClick={onMainMenu}>Main Menu</Button>
-        </Stack>
-      </div>
-    </div>
+    <Stack gap="sm" align="stretch">
+      <Title order={2} ta="center" style={{ fontFamily: "'Courier New', monospace", letterSpacing: 8, textTransform: 'uppercase', color: '#88aa88' }}>
+        Paused
+      </Title>
+      <Text size="xs" c="dimmed" ta="center">{difficultyLabel(difficulty, options)}</Text>
+      <Divider />
+      <Button onClick={onResume}>Resume</Button>
+      <Button variant="subtle" onClick={onOptions}>Options</Button>
+      <Button variant="subtle" onClick={onRestart}>Restart</Button>
+      <Button variant="subtle" onClick={onMainMenu}>Main Menu</Button>
+    </Stack>
   )
 }
