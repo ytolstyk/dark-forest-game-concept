@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Button } from '@mantine/core'
 import { getUsername, setUsername } from '../lib/storage'
 import { submitScore } from '../lib/leaderboard'
 import type { GameStats, GameSettings } from '../lib/leaderboard'
@@ -49,12 +50,12 @@ export function SubmitScoreModal({ timeSeconds, displayTime, userId, stats, sett
           />
         </div>
         <div className="submit-actions">
-          <button className="btn" onClick={handleSubmit} disabled={submitting}>
+          <Button onClick={handleSubmit} disabled={submitting} loading={submitting}>
             {submitting ? 'Submitting...' : 'Submit'}
-          </button>
-          <button className="btn btn-secondary" onClick={handleSkip} disabled={submitting}>
+          </Button>
+          <Button variant="subtle" onClick={handleSkip} disabled={submitting}>
             Skip
-          </button>
+          </Button>
         </div>
       </div>
     </div>

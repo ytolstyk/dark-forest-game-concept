@@ -171,8 +171,8 @@ export class GameScene {
     this.app.stage.addChild(this.lighting.getGlowLayer());
   }
 
-  pause() { this._paused = true }
-  resume() { this._paused = false }
+  pause()  { this._paused = true;  this.audio.pauseAudio()  }
+  resume() { this._paused = false; this.audio.resumeAudio() }
 
   update = () => {
     if (this.gameOver || this._paused) return;

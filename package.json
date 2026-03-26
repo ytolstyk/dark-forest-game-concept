@@ -11,6 +11,8 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@mantine/core": "^8.3.18",
+    "@mantine/hooks": "^8.3.18",
     "aws-amplify": "^6.16.3",
     "pixi.js": "^8.17.0",
     "react": "^19.2.4",

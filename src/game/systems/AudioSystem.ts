@@ -587,6 +587,9 @@ export class AudioSystem {
     });
   }
 
+  pauseAudio() { this.ctx?.suspend() }
+  resumeAudio() { this.ctx?.resume() }
+
   stopAll() {
     this.stopChaseMusic();
     this.stopRegularChaseSound();

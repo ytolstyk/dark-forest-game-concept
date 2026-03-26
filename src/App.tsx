@@ -1,5 +1,8 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import type React from 'react'
+import {
+  Button, Slider, Switch, TextInput, Stack, Text, Title, Divider,
+} from '@mantine/core'
 import { Game } from './game/Game'
 import { GameState, DEFAULT_GAME_OPTIONS } from './game/types'
 import type { GameOptions } from './game/types'
@@ -12,11 +15,42 @@ import { SubmitScoreModal } from './components/SubmitScoreModal'
 import { PauseModal } from './components/PauseModal'
 import './App.css'
 
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+type Difficulty = 'easy' | 'normal' | 'hard' | 'custom'
+type MenuStep = 'main' | 'difficulty' | 'custom-settings' | 'options'
+
+const DIFFICULTY_PRESETS: Record<Exclude<Difficulty, 'custom'>, Partial<GameOptions>> = {
+  easy:   { monsterCount: 10, leshenEnabled: false, torchBurnoutEnabled: false, torchTimerSeconds: 150 },
+  normal: { monsterCount: 20, leshenEnabled: true,  torchBurnoutEnabled: false, torchTimerSeconds: 150 },
+  hard:   { monsterCount: 30, leshenEnabled: true,  torchBurnoutEnabled: true,  torchTimerSeconds: 150 },
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60)
   const s = seconds % 60
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
+
+function difficultyLabel(difficulty: Difficulty, options: GameOptions): string {
+  if (difficulty === 'easy')   return 'Easy — 10 monsters · No Leshen · No torch burnout'
+  if (difficulty === 'normal') return 'Normal — 20 monsters · Leshen · No torch burnout'
+  if (difficulty === 'hard')   return 'Hard — 30 monsters · Leshen · Torch burnout: 2:30'
+  const parts = [`${options.monsterCount} monsters`]
+  parts.push(options.leshenEnabled ? 'Leshen' : 'No Leshen')
+  if (options.torchBurnoutEnabled) {
+    const m = Math.floor(options.torchTimerSeconds / 60)
+    const s = String(options.torchTimerSeconds % 60).padStart(2, '0')
+    parts.push(`Torch burnout: ${m}:${s}`)
+  } else {
+    parts.push('No torch burnout')
+  }
+  return `Custom — ${parts.join(' · ')}`
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function HeartRateWidget({ bpm }: { bpm: number }) {
   const danger = bpm >= 150
@@ -53,12 +87,8 @@ function SupportModal({ onClose }: { onClose: () => void }) {
         <h2 className="modal-title">Support the Developer</h2>
         <p className="modal-subtitle">Enjoying Dark Forest? Help keep it alive.</p>
         <div className="modal-donate-btns">
-          <a href={DONATION_LINKS.paypal} target="_blank" rel="noopener noreferrer" className="donate-btn donate-paypal">
-            PayPal
-          </a>
-          <a href={DONATION_LINKS.venmo} target="_blank" rel="noopener noreferrer" className="donate-btn donate-venmo">
-            Venmo
-          </a>
+          <a href={DONATION_LINKS.paypal} target="_blank" rel="noopener noreferrer" className="donate-btn donate-paypal">PayPal</a>
+          <a href={DONATION_LINKS.venmo} target="_blank" rel="noopener noreferrer" className="donate-btn donate-venmo">Venmo</a>
         </div>
       </div>
     </div>
@@ -77,6 +107,8 @@ function Footer({ onSupportClick }: { onSupportClick: () => void }) {
 
 const EMPTY_LB: LeaderboardResult = { entries: [], total: 0 }
 
+// ─── OptionsPanel (volume + name only) ───────────────────────────────────────
+
 interface OptionsPanelProps {
   onBack: () => void
   options: GameOptions
@@ -87,20 +119,20 @@ interface OptionsPanelProps {
   leaderboard: LeaderboardResult
   lbLoading: boolean
   userId: string
+  // Optional: show difficulty context when opened from pause
+  difficultyLabel?: string
 }
 
-function OptionsPanel({ onBack, options, setOptions, displayName, onNameBlur, onViewLeaderboard, leaderboard, lbLoading, userId }: OptionsPanelProps) {
+function OptionsPanel({
+  onBack, options, setOptions, displayName, onNameBlur,
+  onViewLeaderboard, leaderboard, lbLoading, userId, difficultyLabel: dlabel,
+}: OptionsPanelProps) {
   const [showLb, setShowLb] = useState(false)
-
-  function handleViewLeaderboard() {
-    onViewLeaderboard()
-    setShowLb(true)
-  }
 
   if (showLb) {
     return (
       <div className="options-panel">
-        <h2 className="options-title">Leaderboard</h2>
+        <Title order={2} className="options-title">Leaderboard</Title>
         <Leaderboard
           entries={leaderboard.entries}
           total={leaderboard.total}
@@ -109,7 +141,7 @@ function OptionsPanel({ onBack, options, setOptions, displayName, onNameBlur, on
           loading={lbLoading}
         />
         <div className="options-actions">
-          <button className="btn" onClick={() => setShowLb(false)}>Back</button>
+          <Button variant="subtle" onClick={() => setShowLb(false)}>Back</Button>
         </div>
       </div>
     )
@@ -117,105 +149,160 @@ function OptionsPanel({ onBack, options, setOptions, displayName, onNameBlur, on
 
   return (
     <div className="options-panel">
-      <h2 className="options-title">Options</h2>
+      <Title order={2} className="options-title">Options</Title>
+
+      {dlabel && (
+        <>
+          <div className="option-row">
+            <Text size="sm" className="option-label">Difficulty</Text>
+            <Text size="sm" c="dimmed">{dlabel}</Text>
+          </div>
+          <Divider my="xs" />
+        </>
+      )}
 
       <div className="option-row">
-        <label className="option-label">Volume</label>
+        <Text size="sm" className="option-label">Volume</Text>
         <div className="option-control">
-          <input
-            type="range" min={0} max={1} step={0.05}
+          <Slider
+            min={0} max={1} step={0.05}
             value={options.volume}
             className="option-slider"
-            onChange={(e) => setOptions((o) => ({ ...o, volume: parseFloat(e.target.value) }))}
+            onChange={(v) => setOptions((o) => ({ ...o, volume: v }))}
           />
           <span className="option-value">{Math.round(options.volume * 100)}%</span>
         </div>
       </div>
 
       <div className="option-row">
-        <label className="option-label">Monsters</label>
+        <Text size="sm" className="option-label">Name</Text>
         <div className="option-control">
-          <input
-            type="range" min={0} max={40} step={1}
+          <TextInput
+            className="option-name-input"
+            maxLength={24}
+            placeholder="Anonymous"
+            defaultValue={displayName}
+            onBlur={(e) => onNameBlur(e.target.value)}
+            size="sm"
+          />
+        </div>
+      </div>
+
+      <div className="option-row option-row-action">
+        <Text size="sm" className="option-label">Leaderboard</Text>
+        <div className="option-control">
+          <Button size="xs" variant="subtle" onClick={() => { onViewLeaderboard(); setShowLb(true) }}>
+            View
+          </Button>
+        </div>
+      </div>
+
+      <div className="options-actions">
+        <Button variant="subtle" size="sm" onClick={() => setOptions({ ...DEFAULT_GAME_OPTIONS })}>
+          Reset Defaults
+        </Button>
+        <Button variant="subtle" onClick={onBack}>Back</Button>
+      </div>
+    </div>
+  )
+}
+
+// ─── DifficultyPanel ─────────────────────────────────────────────────────────
+
+interface DifficultyPanelProps {
+  onSelect: (d: Difficulty) => void
+  onBack: () => void
+}
+
+function DifficultyPanel({ onSelect, onBack }: DifficultyPanelProps) {
+  return (
+    <div className="options-panel">
+      <Title order={2} className="options-title">Choose Difficulty</Title>
+      <Stack gap="sm">
+        <Button fullWidth onClick={() => onSelect('easy')}>Easy</Button>
+        <Button fullWidth onClick={() => onSelect('normal')}>Normal</Button>
+        <Button fullWidth onClick={() => onSelect('hard')}>Hard</Button>
+        <Button fullWidth variant="subtle" onClick={() => onSelect('custom')}>Custom</Button>
+        <Divider />
+        <Button fullWidth variant="subtle" onClick={onBack}>Back</Button>
+      </Stack>
+    </div>
+  )
+}
+
+// ─── CustomSettingsPanel ──────────────────────────────────────────────────────
+
+interface CustomSettingsPanelProps {
+  options: GameOptions
+  setOptions: React.Dispatch<React.SetStateAction<GameOptions>>
+  onStart: () => void
+  onBack: () => void
+}
+
+function CustomSettingsPanel({ options, setOptions, onStart, onBack }: CustomSettingsPanelProps) {
+  return (
+    <div className="options-panel">
+      <Title order={2} className="options-title">Custom</Title>
+
+      <div className="option-row">
+        <Text size="sm" className="option-label">Monsters</Text>
+        <div className="option-control">
+          <Slider
+            min={0} max={40} step={1}
             value={options.monsterCount}
             className="option-slider"
-            onChange={(e) => setOptions((o) => ({ ...o, monsterCount: parseInt(e.target.value) }))}
+            onChange={(v) => setOptions((o) => ({ ...o, monsterCount: v }))}
           />
           <span className="option-value">{options.monsterCount}</span>
         </div>
       </div>
 
       <div className="option-row">
-        <label className="option-label">The Leshen</label>
+        <Text size="sm" className="option-label">The Leshen</Text>
         <div className="option-control">
-          <button
-            className={`option-toggle ${options.leshenEnabled ? 'on' : 'off'}`}
-            onClick={() => setOptions((o) => ({ ...o, leshenEnabled: !o.leshenEnabled }))}
-          >
-            {options.leshenEnabled ? 'ON' : 'OFF'}
-          </button>
+          <Switch
+            checked={options.leshenEnabled}
+            onChange={(e) => { const v = e.currentTarget.checked; setOptions((o) => ({ ...o, leshenEnabled: v })) }}
+            color="green"
+          />
         </div>
       </div>
 
       <div className="option-row">
-        <label className="option-label">Torch Burnout</label>
+        <Text size="sm" className="option-label">Torch Burnout</Text>
         <div className="option-control">
-          <button
-            className={`option-toggle ${options.torchBurnoutEnabled ? 'on' : 'off'}`}
-            onClick={() => setOptions((o) => ({ ...o, torchBurnoutEnabled: !o.torchBurnoutEnabled }))}
-          >
-            {options.torchBurnoutEnabled ? 'ON' : 'OFF'}
-          </button>
+          <Switch
+            checked={options.torchBurnoutEnabled}
+            onChange={(e) => { const v = e.currentTarget.checked; setOptions((o) => ({ ...o, torchBurnoutEnabled: v })) }}
+            color="green"
+          />
         </div>
       </div>
 
       {options.torchBurnoutEnabled && (
         <div className="option-row">
-          <label className="option-label">Torch Time</label>
+          <Text size="sm" className="option-label">Torch Time</Text>
           <div className="option-control">
-            <input
-              type="range" min={30} max={300} step={10}
+            <Slider
+              min={30} max={300} step={10}
               value={options.torchTimerSeconds}
               className="option-slider"
-              onChange={(e) => setOptions((o) => ({ ...o, torchTimerSeconds: parseInt(e.target.value) }))}
+              onChange={(v) => setOptions((o) => ({ ...o, torchTimerSeconds: v }))}
             />
             <span className="option-value">{options.torchTimerSeconds}s</span>
           </div>
         </div>
       )}
 
-      <div className="option-row">
-        <label className="option-label">Name</label>
-        <div className="option-control">
-          <input
-            type="text"
-            className="option-name-input"
-            maxLength={24}
-            placeholder="Anonymous"
-            defaultValue={displayName}
-            onBlur={(e) => onNameBlur(e.target.value)}
-          />
-        </div>
-      </div>
-
-      <div className="option-row option-row-action">
-        <label className="option-label">Leaderboard</label>
-        <div className="option-control">
-          <button className="option-toggle on" onClick={handleViewLeaderboard}>
-            View
-          </button>
-        </div>
-      </div>
-
       <div className="options-actions">
-        <button className="btn btn-secondary" onClick={() => setOptions({ ...DEFAULT_GAME_OPTIONS })}>
-          Reset Defaults
-        </button>
-        <button className="btn" onClick={onBack}>Back</button>
+        <Button variant="subtle" onClick={onBack}>Back</Button>
+        <Button onClick={onStart}>Start Game</Button>
       </div>
     </div>
   )
 }
+
+// ─── App ─────────────────────────────────────────────────────────────────────
 
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -228,15 +315,18 @@ function App() {
   const [totalSteps, setTotalSteps] = useState(0)
   const [elapsed, setElapsed] = useState(0)
   const startTimeRef = useRef<number>(0)
+  const pauseStartRef = useRef<number>(0)
+  const pauseOffsetRef = useRef<number>(0)
   const [heartRate, setHeartRate] = useState(75)
   const [endAvgHR, setEndAvgHR] = useState(0)
   const [endMaxHR, setEndMaxHR] = useState(0)
   const [endEnemiesNoticed, setEndEnemiesNoticed] = useState(0)
   const [endCrowsSpooked, setEndCrowsSpooked] = useState(0)
   const [endLeshenSteps, setEndLeshenSteps] = useState(0)
-  const [showOptions, setShowOptions] = useState(false)
   const [showSupport, setShowSupport] = useState(false)
   const [options, setOptions] = useState<GameOptions>({ ...DEFAULT_GAME_OPTIONS })
+  const [difficulty, setDifficulty] = useState<Difficulty>('normal')
+  const [menuStep, setMenuStep] = useState<MenuStep>('main')
 
   // User identity
   const [userId] = useState(() => getUserId())
@@ -253,8 +343,6 @@ function App() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardResult>(EMPTY_LB)
   const [lbLoading, setLbLoading] = useState(false)
   const [userRank, setUserRank] = useState<number | null>(null)
-
-  // All entries (for rank calculation — top 1000 fetched internally)
   const allEntriesRef = useRef<{ userId: string }[]>([])
 
   useEffect(() => {
@@ -276,7 +364,7 @@ function App() {
     }
   }, [])
 
-  // Poll game state for HUD (lightweight)
+  // Poll game state for HUD
   useEffect(() => {
     if (gameState !== GameState.PLAYING) return
     const interval = setInterval(() => {
@@ -312,12 +400,10 @@ function App() {
     }
 
     if (gameState === GameState.WIN) {
-      // Show submit modal first; leaderboard loads after submit/skip
       setShowSubmitModal(true)
       setLeaderboard(EMPTY_LB)
       setUserRank(null)
     } else {
-      // GAME_OVER: fetch leaderboard immediately (no rank)
       loadLeaderboard(null)
     }
   }, [gameState])
@@ -337,7 +423,6 @@ function App() {
       const result = await fetchLeaderboard(currentGameSettings())
       setLeaderboard(result)
       if (submittedUserId) {
-        // Re-fetch full list for accurate rank
         const rank = getUserRank(submittedUserId, allEntriesRef.current.length > 0
           ? allEntriesRef.current
           : result.entries)
@@ -352,20 +437,25 @@ function App() {
 
   function handleSubmitDone(submitted: boolean) {
     setShowSubmitModal(false)
-    // After submit or skip, load leaderboard; pass userId only if submitted
     loadLeaderboard(submitted ? userId : null)
   }
 
-  // Timer — runs while playing
+  // Timer — Effect A: initialize on game start
   useEffect(() => {
     if (gameState !== GameState.PLAYING) return
     startTimeRef.current = Date.now()
-    setTimeout(() => setElapsed(0), 0)
+    pauseOffsetRef.current = 0
+    setElapsed(0)
+  }, [gameState])
+
+  // Timer — Effect B: run interval only when playing AND not paused
+  useEffect(() => {
+    if (gameState !== GameState.PLAYING || isPaused) return
     const interval = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000))
+      setElapsed(Math.floor((Date.now() - startTimeRef.current - pauseOffsetRef.current) / 1000))
     }, 1000)
     return () => clearInterval(interval)
-  }, [gameState])
+  }, [gameState, isPaused])
 
   // Escape key — pause / unpause during PLAYING
   useEffect(() => {
@@ -374,8 +464,13 @@ function App() {
       if (e.key === 'Escape') {
         setIsPaused((p) => {
           const next = !p
-          if (next) gameRef.current?.pause()
-          else gameRef.current?.resume()
+          if (next) {
+            pauseStartRef.current = Date.now()
+            gameRef.current?.pause()
+          } else {
+            pauseOffsetRef.current += Date.now() - pauseStartRef.current
+            gameRef.current?.resume()
+          }
           return next
         })
       }
@@ -445,7 +540,7 @@ function App() {
     if (!game) return
     setLoadProgress(0)
     setGameState(GameState.LOADING)
-    setShowOptions(false)
+    setMenuStep('main')
     setIsPaused(false)
     setPauseShowOptions(false)
 
@@ -458,7 +553,35 @@ function App() {
     setTotalSteps(0)
   }, [options])
 
+  function handleSelectDifficulty(d: Difficulty) {
+    if (d === 'custom') {
+      setDifficulty('custom')
+      setMenuStep('custom-settings')
+      return
+    }
+    const preset = DIFFICULTY_PRESETS[d]
+    setDifficulty(d)
+    setOptions((o) => ({ ...o, ...preset }))
+    // startGame needs updated options — use a callback approach
+    const game = gameRef.current
+    if (!game) return
+    setLoadProgress(0)
+    setGameState(GameState.LOADING)
+    setMenuStep('main')
+    setIsPaused(false)
+    setPauseShowOptions(false)
+    const mergedOptions: GameOptions = { ...DEFAULT_GAME_OPTIONS, ...options, ...preset }
+    game.startGame((pct) => setLoadProgress(pct), mergedOptions).then(() => {
+      setGameState(GameState.PLAYING)
+      setTorchOn(false)
+      setTorchFuel(1)
+      setInventory({ keys: false, fuel: false })
+      setTotalSteps(0)
+    })
+  }
+
   function handleResume() {
+    pauseOffsetRef.current += Date.now() - pauseStartRef.current
     setIsPaused(false)
     setPauseShowOptions(false)
     gameRef.current?.resume()
@@ -532,15 +655,34 @@ function App() {
     </>
   )
 
+  const sharedOptionsProps = {
+    options,
+    setOptions,
+    displayName,
+    onNameBlur: handleNameBlur,
+    onViewLeaderboard: handleViewLeaderboard,
+    leaderboard,
+    lbLoading,
+    userId,
+  }
+
   return (
     <div className="game-container">
-      <canvas ref={canvasRef} style={(isPaused && pauseShowOptions) || (gameState === GameState.MENU && showOptions) ? { pointerEvents: 'none' } : undefined} />
+      <canvas
+        ref={canvasRef}
+        style={
+          (isPaused && pauseShowOptions) || (gameState === GameState.MENU && menuStep === 'options')
+            ? { pointerEvents: 'none' }
+            : undefined
+        }
+      />
 
       {gameState === GameState.MENU && (
         <div className="overlay menu-overlay">
           <Footer onSupportClick={() => setShowSupport(true)} />
           <h1 className="menu-title">Dark Forest</h1>
-          {!showOptions ? (
+
+          {menuStep === 'main' && (
             <>
               <div className="menu-instructions">
                 <p><kbd>WASD</kbd> or <kbd>Arrow Keys</kbd> to move</p>
@@ -548,11 +690,32 @@ function App() {
                 <p>Find the <strong>keys</strong> and <strong>fuel</strong>, then reach the <strong>car</strong> to escape</p>
                 <p>Your torch attracts creatures — use it wisely</p>
               </div>
-              <button className="btn" onClick={startGame}>Start Game</button>
-              <button className="btn btn-secondary" onClick={() => setShowOptions(true)}>Options</button>
+              <Button size="lg" onClick={() => setMenuStep('difficulty')}>Start Game</Button>
+              <Button size="lg" variant="subtle" mt="xs" onClick={() => setMenuStep('options')}>Options</Button>
             </>
-          ) : (
-            <OptionsPanel onBack={() => setShowOptions(false)} options={options} setOptions={setOptions} displayName={displayName} onNameBlur={handleNameBlur} onViewLeaderboard={handleViewLeaderboard} leaderboard={leaderboard} lbLoading={lbLoading} userId={userId} />
+          )}
+
+          {menuStep === 'difficulty' && (
+            <DifficultyPanel
+              onSelect={handleSelectDifficulty}
+              onBack={() => setMenuStep('main')}
+            />
+          )}
+
+          {menuStep === 'custom-settings' && (
+            <CustomSettingsPanel
+              options={options}
+              setOptions={setOptions}
+              onStart={startGame}
+              onBack={() => setMenuStep('difficulty')}
+            />
+          )}
+
+          {menuStep === 'options' && (
+            <OptionsPanel
+              {...sharedOptionsProps}
+              onBack={() => setMenuStep('main')}
+            />
           )}
         </div>
       )}
@@ -583,13 +746,16 @@ function App() {
             >
               <div ref={joystickKnobRef} className="joystick-knob" />
             </div>
-            <div
-              className="mobile-torch-btn"
-              onTouchStart={handleTorchTap}
-            >🔦</div>
+            <div className="mobile-torch-btn" onTouchStart={handleTorchTap}>🔦</div>
             <div
               className="mobile-menu-btn"
-              onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); setIsPaused(true); gameRef.current?.pause() }}
+              onTouchEnd={(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+                pauseStartRef.current = Date.now()
+                setIsPaused(true)
+                gameRef.current?.pause()
+              }}
             >&#9776;</div>
           </div>
           <div className="game-timer">{formatTime(elapsed)}</div>
@@ -623,6 +789,8 @@ function App() {
 
           {isPaused && !pauseShowOptions && (
             <PauseModal
+              difficulty={difficulty}
+              options={options}
               onResume={handleResume}
               onRestart={startGame}
               onMainMenu={handleMainMenu}
@@ -633,7 +801,11 @@ function App() {
           {isPaused && pauseShowOptions && (
             <div className="pause-backdrop" onClick={handleResume}>
               <div className="pause-modal pause-modal-options" onClick={(e) => e.stopPropagation()}>
-                <OptionsPanel onBack={() => setPauseShowOptions(false)} options={options} setOptions={setOptions} displayName={displayName} onNameBlur={handleNameBlur} onViewLeaderboard={handleViewLeaderboard} leaderboard={leaderboard} lbLoading={lbLoading} userId={userId} />
+                <OptionsPanel
+                  {...sharedOptionsProps}
+                  onBack={() => setPauseShowOptions(false)}
+                  difficultyLabel={difficultyLabel(difficulty, options)}
+                />
               </div>
             </div>
           )}
@@ -654,7 +826,7 @@ function App() {
             userRank={null}
             loading={lbLoading}
           />
-          <button className="btn" onClick={startGame}>Try Again</button>
+          <Button color="red" mt="md" onClick={() => { setMenuStep('difficulty'); setGameState(GameState.MENU) }}>Try Again</Button>
         </div>
       )}
 
@@ -709,7 +881,7 @@ function App() {
             userRank={userRank}
             loading={lbLoading}
           />
-          <button className="btn" onClick={startGame}>Play Again</button>
+          <Button mt="md" onClick={() => { setMenuStep('difficulty'); setGameState(GameState.MENU) }}>Play Again</Button>
         </div>
       )}
 
@@ -732,8 +904,6 @@ function App() {
       )}
 
       {showSupport && <SupportModal onClose={() => setShowSupport(false)} />}
-
-
     </div>
   )
 }

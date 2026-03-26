@@ -898,10 +898,21 @@
 
 .pause-modal-options {
   padding: 32px 40px 36px;
+  width: fit-content;
   min-width: 380px;
+  max-width: min(92vw, 100%);
 }
 
-.pause-modal-options .leaderboard,
+.pause-modal-options .options-panel {
+  width: auto;
+  min-width: 300px;
+}
+
+.pause-modal-options .leaderboard {
+  width: min(560px, 80vw);
+  box-sizing: border-box;
+}
+
 .menu-overlay .options-panel .leaderboard {
   width: 100%;
   box-sizing: border-box;
@@ -1025,7 +1036,7 @@
 
 .lb-header {
   font-size: 13px;
-  color: #88aa88;
+  color: #aaccaa;
   letter-spacing: 3px;
   text-transform: uppercase;
   text-align: center;
@@ -1040,9 +1051,9 @@
   font-size: 10px;
   letter-spacing: 1px;
   text-transform: uppercase;
-  color: rgba(136, 170, 136, 0.6);
+  color: rgba(170, 204, 170, 0.7);
   background: none;
-  border: 1px solid rgba(136, 170, 136, 0.25);
+  border: 1px solid rgba(170, 204, 170, 0.35);
   border-radius: 3px;
   padding: 2px 7px;
   cursor: pointer;
@@ -1051,13 +1062,13 @@
 }
 
 .lb-toggle-btn:hover {
-  color: #88aa88;
-  border-color: rgba(136, 170, 136, 0.5);
+  color: #aaccaa;
+  border-color: rgba(170, 204, 170, 0.65);
 }
 
 .lb-loading {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.6);
   text-align: center;
   padding: 12px 0;
   letter-spacing: 2px;
@@ -1070,14 +1081,14 @@
 }
 
 .lb-table th {
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.6);
   font-weight: normal;
   text-transform: uppercase;
   letter-spacing: 2px;
   font-size: 10px;
   padding: 4px 8px 8px;
   text-align: left;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .lb-table th:last-child {
@@ -1086,12 +1097,12 @@
 
 .lb-table td {
   padding: 6px 8px;
-  color: rgba(255, 255, 255, 0.65);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.88);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .lb-table td:first-child {
-  color: rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.45);
   width: 28px;
 }
 
@@ -1100,12 +1111,12 @@
 }
 
 .lb-table td.lb-td-time {
-  color: #88aa88;
+  color: #aaddaa;
   letter-spacing: 1px;
 }
 
 .lb-table td.lb-td-extra {
-  color: rgba(255, 255, 255, 0.45);
+  color: rgba(255, 255, 255, 0.65);
   font-size: 12px;
   text-align: right;
 }
@@ -1115,17 +1126,17 @@
 }
 
 .lb-table tr.lb-row-highlight td {
-  color: #44ff44;
-  background: rgba(68, 255, 68, 0.06);
+  color: #66ff66;
+  background: rgba(68, 255, 68, 0.08);
 }
 
 .lb-table tr.lb-row-highlight td:first-child {
-  color: #44ff44;
+  color: #66ff66;
 }
 
 .lb-footer {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.4);
   text-align: center;
   margin-top: 10px;
   letter-spacing: 2px;
