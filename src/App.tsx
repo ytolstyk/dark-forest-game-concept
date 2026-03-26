@@ -17,7 +17,7 @@ import type { GameOptions } from "./game/types";
 import { DONATION_LINKS } from "./game/constants";
 import { getUserId, getUsername, setUsername } from "./lib/storage";
 import { fetchLeaderboard, getUserRank } from "./lib/leaderboard";
-import type { LeaderboardResult, GameSettings } from "./lib/leaderboard";
+import type { LeaderboardResult, GameSettings, LeaderboardEntry } from "./lib/leaderboard";
 import { Leaderboard } from "./components/Leaderboard";
 import { SubmitScoreModal } from "./components/SubmitScoreModal";
 import { PauseModal } from "./components/PauseModal";
@@ -26,7 +26,7 @@ import "./App.css";
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type Difficulty = "easy" | "normal" | "hard" | "custom";
-type MenuStep = "main" | "difficulty" | "custom-settings" | "options";
+type MenuStep = "main" | "difficulty" | "custom-settings" | "options" | "leaderboard";
 
 const DIFFICULTY_PRESETS: Record<
   Exclude<Difficulty, "custom">,
@@ -162,6 +162,92 @@ function Footer({ onSupportClick }: { onSupportClick: () => void }) {
 
 const EMPTY_LB: LeaderboardResult = { entries: [], total: 0 };
 
+// ─── LeaderboardPanel ────────────────────────────────────────────────────────
+
+interface LeaderboardPanelProps {
+  entries: LeaderboardEntry[];
+  total: number;
+  userId: string;
+  loading: boolean;
+  onBack: () => void;
+}
+
+function LeaderboardPanel({ entries, userId, loading, onBack }: LeaderboardPanelProps) {
+  const [filterMonsters, setFilterMonsters] = useState<number | null | 'any'>('any');
+  const [filterLeshen, setFilterLeshen] = useState<boolean | null | 'any'>('any');
+  const [filterTorch, setFilterTorch] = useState<boolean | null | 'any'>('any');
+
+  const monsterCounts = Array.from(
+    new Set(entries.map((e) => e.monsterCount ?? null))
+  ).sort((a, b) => (a ?? -1) - (b ?? -1));
+
+  const filtered = entries.filter((e) => {
+    if (filterMonsters !== 'any' && e.monsterCount !== filterMonsters) return false;
+    if (filterLeshen !== 'any' && e.leshenEnabled !== filterLeshen) return false;
+    if (filterTorch !== 'any' && e.torchBurnoutEnabled !== filterTorch) return false;
+    return true;
+  });
+
+  return (
+    <div className="lb-panel">
+      <Title order={2} className="options-title">
+        Leaderboard
+      </Title>
+
+      {!loading && entries.length > 0 && (
+        <div className="lb-filters">
+          <div className="lb-filter-group">
+            <span className="lb-filter-label">Monsters</span>
+            <div className="lb-filter-btns">
+              <button
+                className={`lb-filter-btn ${filterMonsters === 'any' ? 'active' : ''}`}
+                onClick={() => setFilterMonsters('any')}
+              >Any</button>
+              {monsterCounts.map((c) => (
+                <button
+                  key={String(c)}
+                  className={`lb-filter-btn ${filterMonsters === c ? 'active' : ''}`}
+                  onClick={() => setFilterMonsters(c)}
+                >{c ?? '—'}</button>
+              ))}
+            </div>
+          </div>
+          <div className="lb-filter-group">
+            <span className="lb-filter-label">Leshen</span>
+            <div className="lb-filter-btns">
+              <button className={`lb-filter-btn ${filterLeshen === 'any' ? 'active' : ''}`} onClick={() => setFilterLeshen('any')}>Any</button>
+              <button className={`lb-filter-btn ${filterLeshen === true ? 'active' : ''}`} onClick={() => setFilterLeshen(true)}>On</button>
+              <button className={`lb-filter-btn ${filterLeshen === false ? 'active' : ''}`} onClick={() => setFilterLeshen(false)}>Off</button>
+            </div>
+          </div>
+          <div className="lb-filter-group">
+            <span className="lb-filter-label">Torch Burnout</span>
+            <div className="lb-filter-btns">
+              <button className={`lb-filter-btn ${filterTorch === 'any' ? 'active' : ''}`} onClick={() => setFilterTorch('any')}>Any</button>
+              <button className={`lb-filter-btn ${filterTorch === true ? 'active' : ''}`} onClick={() => setFilterTorch(true)}>On</button>
+              <button className={`lb-filter-btn ${filterTorch === false ? 'active' : ''}`} onClick={() => setFilterTorch(false)}>Off</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Leaderboard
+        entries={filtered}
+        total={filtered.length}
+        userId={userId}
+        userRank={null}
+        loading={loading}
+      />
+
+      <div className="options-actions">
+        <Button variant="subtle" onClick={onBack}>
+          Back
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // ─── OptionsPanel (volume + name only) ───────────────────────────────────────
 
 interface OptionsPanelProps {
@@ -170,9 +256,6 @@ interface OptionsPanelProps {
   setOptions: React.Dispatch<React.SetStateAction<GameOptions>>;
   displayName: string;
   onNameBlur: (value: string) => void;
-  onViewLeaderboard: () => void;
-  leaderboard: LeaderboardResult;
-  lbLoading: boolean;
   userId: string;
   // Optional: show difficulty context when opened from pause
   difficultyLabel?: string;
@@ -184,36 +267,8 @@ function OptionsPanel({
   setOptions,
   displayName,
   onNameBlur,
-  onViewLeaderboard,
-  leaderboard,
-  lbLoading,
-  userId,
   difficultyLabel: dlabel,
 }: OptionsPanelProps) {
-  const [showLb, setShowLb] = useState(false);
-
-  if (showLb) {
-    return (
-      <div className="options-panel">
-        <Title order={2} className="options-title">
-          Leaderboard
-        </Title>
-        <Leaderboard
-          entries={leaderboard.entries}
-          total={leaderboard.total}
-          userId={userId}
-          userRank={null}
-          loading={lbLoading}
-        />
-        <div className="options-actions">
-          <Button variant="subtle" onClick={() => setShowLb(false)}>
-            Back
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="options-panel">
       <Title order={2} className="options-title">
@@ -266,24 +321,6 @@ function OptionsPanel({
             onBlur={(e) => onNameBlur(e.target.value)}
             size="sm"
           />
-        </div>
-      </div>
-
-      <div className="option-row option-row-action">
-        <Text size="sm" className="option-label">
-          Leaderboard
-        </Text>
-        <div className="option-control">
-          <Button
-            size="xs"
-            variant="subtle"
-            onClick={() => {
-              onViewLeaderboard();
-              setShowLb(true);
-            }}
-          >
-            View
-          </Button>
         </div>
       </div>
 
@@ -483,6 +520,10 @@ function App() {
   const [lbLoading, setLbLoading] = useState(false);
   const [userRank, setUserRank] = useState<number | null>(null);
   const allEntriesRef = useRef<{ userId: string }[]>([]);
+
+  // All-results leaderboard (main menu)
+  const [allLeaderboard, setAllLeaderboard] = useState<LeaderboardResult>(EMPTY_LB);
+  const [allLbLoading, setAllLbLoading] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -768,15 +809,16 @@ function App() {
     setPauseShowOptions(false);
   }
 
-  async function handleViewLeaderboard() {
-    setLbLoading(true);
+  async function handleViewAllLeaderboard() {
+    setAllLbLoading(true);
+    setMenuStep("leaderboard");
     try {
-      const result = await fetchLeaderboard(currentGameSettings());
-      setLeaderboard(result);
+      const result = await fetchLeaderboard();
+      setAllLeaderboard(result);
     } catch {
-      setLeaderboard(EMPTY_LB);
+      setAllLeaderboard(EMPTY_LB);
     } finally {
-      setLbLoading(false);
+      setAllLbLoading(false);
     }
   }
 
@@ -836,9 +878,6 @@ function App() {
     setOptions,
     displayName,
     onNameBlur: handleNameBlur,
-    onViewLeaderboard: handleViewLeaderboard,
-    leaderboard,
-    lbLoading,
     userId,
   };
 
@@ -885,6 +924,14 @@ function App() {
               >
                 Options
               </Button>
+              <Button
+                size="lg"
+                variant="subtle"
+                mt="xs"
+                onClick={handleViewAllLeaderboard}
+              >
+                Leaderboard
+              </Button>
             </>
           )}
 
@@ -907,6 +954,16 @@ function App() {
           {menuStep === "options" && (
             <OptionsPanel
               {...sharedOptionsProps}
+              onBack={() => setMenuStep("main")}
+            />
+          )}
+
+          {menuStep === "leaderboard" && (
+            <LeaderboardPanel
+              entries={allLeaderboard.entries}
+              total={allLeaderboard.total}
+              userId={userId}
+              loading={allLbLoading}
               onBack={() => setMenuStep("main")}
             />
           )}

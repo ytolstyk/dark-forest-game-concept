@@ -116,7 +116,7 @@ export async function fetchLeaderboard(
     : sorted;
 
   const total = filtered.length;
-  const top10 = filtered.slice(0, 10).map((e) => ({
+  const entries = filtered.map((e) => ({
     id: e.id,
     username: e.username ?? "Unknown",
     timeSeconds: e.timeSeconds ?? 0,
@@ -134,7 +134,7 @@ export async function fetchLeaderboard(
     torchTimerSeconds: e.torchTimerSeconds ?? null,
   }));
 
-  return { entries: top10, total };
+  return { entries, total };
 }
 
 export function getUserRank(

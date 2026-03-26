@@ -881,6 +881,70 @@
   max-width: none;
 }
 
+/* Full-width leaderboard panel on main menu */
+.lb-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: min(800px, 92vw);
+  gap: 8px;
+}
+
+.lb-panel .leaderboard {
+  width: 100%;
+  max-width: none;
+}
+
+.lb-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  margin-bottom: 8px;
+}
+
+.lb-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lb-filter-label {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: #88aa88;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  white-space: nowrap;
+}
+
+.lb-filter-btns {
+  display: flex;
+  gap: 4px;
+}
+
+.lb-filter-btn {
+  background: transparent;
+  border: 1px solid rgba(68, 255, 68, 0.2);
+  border-radius: 3px;
+  color: rgba(255, 255, 255, 0.55);
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.lb-filter-btn:hover {
+  border-color: rgba(68, 255, 68, 0.5);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.lb-filter-btn.active {
+  border-color: rgba(68, 255, 68, 0.7);
+  color: #88ee88;
+  background: rgba(68, 255, 68, 0.08);
+}
+
 /* Submit score modal */
 .submit-backdrop {
   position: fixed;
