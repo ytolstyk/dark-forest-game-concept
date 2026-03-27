@@ -33,24 +33,29 @@ npm run lint       # ESLint
 
 ## Tech Stack
 
-| Layer      | Technology           |
-| ---------- | -------------------- |
-| UI / shell | React 19, TypeScript |
-| Renderer   | Pixi.js v8 (WebGL)   |
-| Bundler    | Vite 8 + Rolldown    |
-| Noise      | simplex-noise v4     |
+| Layer      | Technology                    |
+| ---------- | ----------------------------- |
+| UI / shell | React 19, Mantine v8, TypeScript |
+| Renderer   | Pixi.js v8 (WebGL)            |
+| Bundler    | Vite 8 + Rolldown             |
+| Noise      | simplex-noise v4              |
+| Backend    | AWS Amplify (leaderboard)     |
 
 ## Features
 
-- **Procedural map** — simplex-noise terrain with rivers, forests, dirt paths, abandoned buildings, spider webs, and random objects generated fresh every run
+- **Procedural map** — simplex-noise terrain with rivers, forests, dirt paths, abandoned buildings, spider webs, fences, tractors, and random props generated fresh every run
 - **Guaranteed connectivity** — flood-fill post-pass bridges any isolated land section so every building and item is always reachable
 - **Lighting system** — Canvas 2D radial-gradient darkness overlay with a soft, flickering torch halo; torch radius vs ambient radius controlled in `constants.ts`
 - **Enemy AI** — patrol → chase → search → return state machine with A\* pathfinding
+- **Enemy variety** — Watchers (light-sensitive), Lurkers (sound-sensitive), and the Leshen boss
 - **The Leshen** — an ancient forest spirit that, once it detects you, never stops chasing (can be toggled in Options)
-- **Crow flocks** — ambient wildlife that scatter when disturbed
+- **Crow flocks** — ambient wildlife that scatter when disturbed by torchlight
+- **Spider webs** — slow the player when walked through
 - **Heart rate monitor** — live BPM widget that reacts to danger; avg and peak heart rate shown on the end screen
 - **Game timer & step counter** — track survival time and distance walked, shown at game end
-- **Options menu** — tune volume, monster count, and toggle the Leshen before starting
+- **Difficulty settings** — choose Easy / Normal / Hard or build a custom preset before starting
+- **Options menu** — tune volume, monster count, torch burnout, and toggle the Leshen
+- **Leaderboard** — submit your score after each run; filter by difficulty; see global rankings
 - **Mobile controls** — virtual joystick and torch button for touchscreen play
 - **Particle effects** — torch sparks, ambient dust
 - **Audio** — footsteps, torch crackle, enemy growl, Leshen pulse, chase music, pickup sounds
