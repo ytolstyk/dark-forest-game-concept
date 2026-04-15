@@ -1090,10 +1090,33 @@
   letter-spacing: 2px;
 }
 
+.lb-scroll {
+  max-height: 320px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(170, 204, 170, 0.3) transparent;
+}
+
+.lb-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.lb-scroll::-webkit-scrollbar-thumb {
+  background: rgba(170, 204, 170, 0.3);
+  border-radius: 2px;
+}
+
 .lb-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+}
+
+.lb-table thead th {
+  position: sticky;
+  top: 0;
+  background: rgba(5, 15, 5, 0.95);
+  z-index: 1;
 }
 
 .lb-table th {

@@ -116,7 +116,7 @@ export async function fetchLeaderboard(
     : sorted;
 
   const total = filtered.length;
-  const entries = filtered.map((e) => ({
+  const entries = filtered.slice(0, 100).map((e) => ({
     id: e.id,
     username: e.username ?? "Unknown",
     timeSeconds: e.timeSeconds ?? 0,
